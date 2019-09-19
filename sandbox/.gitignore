@@ -1,0 +1,11 @@
+# Fichiers générés par le Makefile
+*.o
+hello
+
+# Fichiers de sauvegarde créés par certains éditeurs
+# Emacs
+*~
+\#*#
+
+# Vi
+.*.swp
