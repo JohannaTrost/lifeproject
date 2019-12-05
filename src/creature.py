@@ -6,9 +6,10 @@ def make_pop(num_inds, element_size, move_steps):
     ind_list = []
 
     for ind in range(num_inds):
-        ind_list.append(make_crappy_multibody(element_size, move_steps))
+        ind_list.append(list(make_crappy_multibody(element_size, move_steps)))
 
     return ind_list
+
 
 def make_crappy_multibody(element_size, move_steps):
     col_box_id = p.createCollisionShape(p.GEOM_BOX,
@@ -256,7 +257,7 @@ def make_crappy_multibody(element_size, move_steps):
 
 
 def move_limb(ID, limb, target_pos, force=60):
-    p.changeDynamics(ID, limb, lateralFriction=2, anisotropicFriction=[1, 1, 1])
+    p.changeDynamics(ID, limb, lateralFriction=2, anisotropicFriction=[1, 0.01, 0.01])
     p.setJointMotorControl2(ID,
                             limb,
                             p.POSITION_CONTROL,
@@ -265,7 +266,7 @@ def move_limb(ID, limb, target_pos, force=60):
 
 
 def make_move_pattern(size_pattern, limb_dict):
-    move_dict = limb_dict.copy()
-    for key in move_dict.keys():
-        move_dict[key] = np.sort(np.random.random(size_pattern) * 2 * np.pi - np.pi)
+    move_dict = {}
+    for key in limb_dict.keys():
+        move_dict[key] = np.random.random(size_pattern) * 2 * np.pi - np.pi
     return move_dict

@@ -10,7 +10,7 @@ p.setGravity(0, 0, -9.81)
 p.setRealTimeSimulation(0)
 size_pattern = 240
 
-num_individuals = 1
+num_individuals = 2
 
 pop = make_pop(num_individuals, 0.25, size_pattern)
 disable_collision(pop)
