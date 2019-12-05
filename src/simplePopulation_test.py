@@ -63,19 +63,6 @@ def generate_visual_body(num_objs, genome):
             jointTypes.append(p.JOINT_REVOLUTE)                                     # [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
             axis.append([0, 0, 1])
 
-            # set links for joint on y axis
-            link_Masses.append(0)
-            linkCollisionShapeIndices.append(box_ids[obj])
-            linkVisualShapeIndices.append(-1)
-            # set positions to connect objects
-            linkPositions.append([0, 0, genome[obj - 1][2] + genome[obj][2]])
-            linkOrientations.append([0, 0, 0, 1])
-            linkInertialFramePositions.append([0, 0, 0])
-            linkInertialFrameOrientations.append([0, 0, 0, 1])
-            indices.append(obj - 1)
-            jointTypes.append(p.JOINT_REVOLUTE)
-            axis.append([0, 1, 0])
-
     # link obj 2 to obj 1 and obj 3 to obj 2
     # create creature
     boxID = p.createMultiBody(mass,
@@ -102,15 +89,10 @@ def generate_visual_body(num_objs, genome):
 
     for joint in range(int(p.getNumJoints(boxID)/2)):
         p.setJointMotorControl2(boxID,
-                                2*joint,
+                                joint,
                                 p.VELOCITY_CONTROL,
                                 targetVelocity=genome[joint][3],
                                 force=genome[joint][4])
-        p.setJointMotorControl2(boxID,
-                                2*joint+1,
-                                p.VELOCITY_CONTROL,
-                                targetVelocity=genome[joint][5],
-                                force=genome[joint][6])
 
     return boxID, basePosition
 
