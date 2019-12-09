@@ -8,3 +8,4 @@
 *.filters
 *.user
 .idea/*
+/src/__pycache__/*
