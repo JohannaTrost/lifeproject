@@ -46,7 +46,8 @@ def generate_visual_body(num_objs, genome):
         # create collision shapes for the objects
         box_ids.append(p.createCollisionShape(p.GEOM_BOX,
                                               halfExtents=[genome[obj][0], genome[obj][1], genome[obj][2]]))  # [sizeX, sizeY, sizeZ]
-        if(obj < num_obj-1)
+        if(obj < (num_objs-1)):
+            pass
 
         # set link and joint parameters for box (no link/joint for the first box)
         if (obj > 0):
