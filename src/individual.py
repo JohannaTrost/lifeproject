@@ -2,6 +2,14 @@ import pybullet as p
 import numpy as np
 
 
+def get_dist(id_ind):
+    x = p.getBasePositionAndOrientation(id_ind)[0][0]
+    y = p.getBasePositionAndOrientation(id_ind)[0][0]
+
+
+    return (x**2 + y**2)**0.5
+
+
 def make_limb_dict():
     return {'left_arm_y': 10, 'right_arm_y': 13,
                  'left_arm_z': 11, 'right_arm_z': 14,
@@ -13,11 +21,11 @@ def make_limb_dict():
 def move_individual(id, genome, move_step):
     limb_dict = make_limb_dict()
     for key in limb_dict.keys():
-        move_limb(id, limb_dict[key], genome[1][key][move_step % genome[2]], force=60)
+        move_limb(id, limb_dict[key], genome[1][key][move_step % genome[2]])
 
 
-def move_limb(id, limb, target_pos, force=60):
-    p.changeDynamics(id, limb, lateralFriction=2, anisotropicFriction=[1, 0.01, 0.01])
+def move_limb(id, limb, target_pos, force=120):
+    p.changeDynamics(id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01])
     p.setJointMotorControl2(id,
                             limb,
                             p.POSITION_CONTROL,

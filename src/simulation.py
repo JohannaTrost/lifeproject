@@ -1,10 +1,16 @@
 import pybullet as p
-from src.individual import make_random_genome, move_individual, make_limb_dict
+from src.individual import make_random_genome, move_individual, get_dist
 import time
 import numpy as np
+from matplotlib import cm
 
 
-def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False, move_steps=240):
+def get_random_color(colormap='viridis'):
+    cmap = cm.get_cmap(colormap, 255)(np.linspace(0, 1, 255))
+    return cmap[np.random.random_integers(0, 254, 1)].tolist()[0]
+
+
+def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
     if direct:
         sim_id = make_sim_env('direct')
     else:
@@ -12,6 +18,7 @@ def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False, move_steps=
 
     pop = [genome2simulation(genome) for genome in genomes]
     disable_collision(pop)
+
     # simulate
     duration_steps = fps * duration_in_sec
     if duration_steps < 0:
@@ -22,13 +29,17 @@ def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False, move_steps=
         p.stepSimulation()
         for indiv, genome in zip(pop, genomes):
             move_individual(indiv, genome, step)
+            print(get_dist(indiv))
         time.sleep(1. / fps)
         step += 1
 
-    return genomes
+    p.resetSimulation()
 
+    # disconnect from the physics server
+    p.disconnect()
 
 def make_sim_env(gui_or_direct):
+
     if gui_or_direct.lower() == 'gui':
         sim_id = p.connect(p.GUI)
     else:
@@ -36,9 +47,6 @@ def make_sim_env(gui_or_direct):
 
     p.setGravity(0, 0, -9.81)
     p.createMultiBody(0, p.createCollisionShape(p.GEOM_PLANE))
-
-    p.setRealTimeSimulation(sim_id)
-
     return sim_id
 
 
@@ -68,36 +76,63 @@ def _genome2multi_body_data(genome=({}, {})):
 
     col_box_ids = {}
     vis_box_ids = {}
+    box_color = get_random_color()
+    sphere_color = [sphere_color * 0.5 for sphere_color in box_color[:-1]] + [1]
     # generate visual/ collision shape ids for objects with 'new' sizes
-    for limb in genome[0]:
+    for limb in genome[0].keys():
         col_box_ids[limb] = p.createCollisionShape(p.GEOM_BOX, halfExtents=genome[0][limb])
         vis_box_ids[limb] = p.createVisualShape(p.GEOM_BOX, halfExtents=genome[0][limb],
-                                                rgbaColor=[0.53, 0.41, 0.8, 255])
+                                                rgbaColor=box_color)
 
     # for all spheres connected to the chest take z value of chest box as radius
     vis_sphere_id_chest = p.createVisualShape(p.GEOM_SPHERE, radius=genome[0]['chest'][2],
-                                              rgbaColor=[0.65, 0.55, 0.85, 1])
+                                              rgbaColor=sphere_color)
     col_sphere_id_chest = p.createCollisionShape(p.GEOM_SPHERE, radius=genome[0]['chest'][2])
     # analog for hip
-    vis_sphere_id_hip = p.createVisualShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2], rgbaColor=[0.65, 0.55, 0.85, 1])
+    vis_sphere_id_hip = p.createVisualShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2], rgbaColor=sphere_color)
     col_sphere_id_hip = p.createCollisionShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2])
 
     # fill multi body parameter values
     mb = _make_mb_dict()
-    mb['link_col_shape_ids'] = [col_box_ids['chest'], col_sphere_id_chest, col_sphere_id_chest, col_box_ids['hip']] + \
-                               [col_sphere_id_chest] * 4 + [col_sphere_id_hip] * 4 + \
-                               [col_box_ids[i] for i in list(col_box_ids)[0:4]]
+    mb['link_col_shape_ids'] = [col_box_ids['chest'],
+                                col_sphere_id_chest,
+                                col_sphere_id_chest,
+                                col_box_ids['hip']] + \
+                               [col_sphere_id_chest] * 4 + \
+                               [col_sphere_id_hip] * 4 + \
+                               [col_box_ids['left_hand'],
+                                col_box_ids['right_hand'],
+                                col_box_ids['left_foot'],
+                                col_box_ids['right_foot']]
 
-    mb['link_vis_shape_ids'] = [vis_box_ids['chest'], vis_sphere_id_chest, vis_sphere_id_chest, vis_box_ids['hip']] + \
-                               [vis_sphere_id_chest] * 4 + [vis_sphere_id_hip] * 4 + \
-                               [vis_box_ids[i] for i in list(vis_box_ids)[0:4]]
+    mb['link_vis_shape_ids'] = [vis_box_ids['chest'],
+                                vis_sphere_id_chest,
+                                vis_sphere_id_chest,
+                                vis_box_ids['hip']] + \
+                               [vis_sphere_id_chest] * 4 + \
+                               [vis_sphere_id_hip] * 4 + \
+                               [vis_box_ids['left_hand'],
+                                vis_box_ids['right_hand'],
+                                vis_box_ids['left_foot'],
+                                vis_box_ids['right_foot']]
 
-    mb['link_pos'] = [[0, genome[0]['chest'][1] * 2, 0], [0, genome[0]['chest'][1] * 2, 0], [0, 0, 0],
-                      [0, genome[0]['hip'][1] * 2, 0], [genome[0]['chest'][0] * 2, 0, 0],
-                      [-genome[0]['chest'][0] * 2, 0, 0], [0, 0, 0], [0, 0, 0], [genome[0]['hip'][0] * 2, 0, 0],
-                      [-genome[0]['hip'][0] * 2, 0, 0], [0, 0, 0], [0, 0, 0], [genome[0]['left_hand'][0] * 2, 0, 0],
-                      [-genome[0]['right_hand'][0] * 2, 0, 0], [genome[0]['left_foot'][0] * 2, 0, 0],
-                      [-genome[0]['right_foot'][0] * 2, 0, 0]]
+    mb['link_pos'] = [[0, genome[0]['chest'][1] + genome[0]['chest'][2], 0],
+                      [0, genome[0]['chest'][1] + genome[0]['chest'][2], 0],
+                      [0, 0, 0],
+                      [0, genome[0]['chest'][2] + genome[0]['hip'][1], 0],
+                      [-genome[0]['chest'][0] - genome[0]['chest'][2], 0, 0],
+                      [genome[0]['chest'][0] + genome[0]['chest'][2], 0, 0],
+                      [0, 0, 0],
+                      [0, 0, 0],
+                      [-genome[0]['hip'][0] - genome[0]['hip'][2], 0, 0],
+                      [genome[0]['hip'][0] + genome[0]['hip'][2], 0, 0],
+                      [0, 0, 0],
+                      [0, 0, 0],
+                      [-genome[0]['left_hand'][0] - genome[0]['chest'][2], 0, 0],
+                      [genome[0]['right_hand'][0] + genome[0]['chest'][2], 0, 0],
+                      [-genome[0]['left_foot'][0] - genome[0]['hip'][2], 0, 0],
+                      [genome[0]['right_foot'][0] + genome[0]['hip'][2], 0, 0],
+                      ]
 
     return mb, col_sphere_id_chest, vis_sphere_id_chest
 
@@ -113,7 +148,7 @@ def genome2simulation(genome=({}, {})):
     return p.createMultiBody(1,
                              mb_data[1],
                              mb_data[2],
-                             [0, 0, 1],
+                             [0, 0, 2],
                              [0, 0, 0, 1],
                              linkMasses=mb['link_masses'],
                              linkCollisionShapeIndices=mb['link_col_shape_ids'],
@@ -125,7 +160,7 @@ def genome2simulation(genome=({}, {})):
                              linkParentIndices=mb['inds'],
                              linkJointTypes=mb['joint_types'],
                              linkJointAxis=mb['axis'],
-                             useMaximalCoordinates=True)
+                             useMaximalCoordinates=False)
 
 
 def disable_collision(pop):
