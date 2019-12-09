@@ -1,5 +1,5 @@
 import pybullet as p
-from src.individual import make_random_genome, move_individual, get_dist
+from src.individual import make_random_genome, move_individual
 import time
 import numpy as np
 from matplotlib import cm
@@ -29,14 +29,10 @@ def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
         p.stepSimulation()
         for indiv, genome in zip(pop, genomes):
             move_individual(indiv, genome, step)
-            print(get_dist(indiv))
         time.sleep(1. / fps)
         step += 1
 
-    p.resetSimulation()
-
-    # disconnect from the physics server
-    p.disconnect()
+    return pop
 
 def make_sim_env(gui_or_direct):
 
