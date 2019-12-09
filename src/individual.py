@@ -10,6 +10,12 @@ def make_limb_dict():
                  'hip_y': 2, 'hip_x': 1}
 
 
+def move_individual(id, genome, move_step):
+    limb_dict = make_limb_dict()
+    for key in limb_dict.keys():
+        move_limb(id, limb_dict[key], genome[1][key][move_step % genome[2]], force=60)
+
+
 def move_limb(id, limb, target_pos, force=60):
     p.changeDynamics(id, limb, lateralFriction=2, anisotropicFriction=[1, 0.01, 0.01])
     p.setJointMotorControl2(id,
@@ -35,4 +41,4 @@ def make_random_genome(move_steps=240):
                  'chest': np.random.rand(3) / 2 + 0.4,
                  'hip': np.random.rand(3) / 2 + 0.4,
                  }
-    return box_sizes, move_dict
+    return box_sizes, move_dict, move_steps

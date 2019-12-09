@@ -1,10 +1,10 @@
 import pybullet as p
-from src.individual import make_random_genome
+from src.individual import make_random_genome, move_individual, make_limb_dict
 import time
 import numpy as np
 
 
-def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
+def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False, move_steps=240):
     if direct:
         sim_id = make_sim_env('direct')
     else:
@@ -12,7 +12,6 @@ def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
 
     pop = [genome2simulation(genome) for genome in genomes]
     disable_collision(pop)
-
     # simulate
     duration_steps = fps * duration_in_sec
     if duration_steps < 0:
@@ -21,6 +20,8 @@ def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
     step = 0
     while p.isConnected(sim_id) and step < duration_steps:
         p.stepSimulation()
+        for indiv, genome in zip(pop, genomes):
+            move_individual(indiv, genome, step)
         time.sleep(1. / fps)
         step += 1
 
@@ -134,4 +135,4 @@ def disable_collision(pop):
             # pair all link indices and disable collision (num of joints = num of links)
             for joint in range(-1, p.getNumJoints(individual)): # all joints to ...
                 for other_joint in range(-1, p.getNumJoints(other_individual)): # ... all other joints
-                    p.setCollisionFilterPair(individual, other_individual, joint, other_joint, enableCollision=0)
+                    p.setCollisionFilterPair(individual, other_individual, joint, other_joint, 0)
