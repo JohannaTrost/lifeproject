@@ -10,7 +10,8 @@ def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
     else:
         sim_id = make_sim_env('gui')
 
-    [genome2simulation(genome) for genome in genomes]
+    pop = [genome2simulation(genome) for genome in genomes]
+    disable_collision(pop)
 
     # simulate
     duration_steps = fps * duration_in_sec
@@ -124,3 +125,13 @@ def genome2simulation(genome=({}, {})):
                              linkJointTypes=mb['joint_types'],
                              linkJointAxis=mb['axis'],
                              useMaximalCoordinates=True)
+
+
+def disable_collision(pop):
+    for idx, individual in enumerate(pop[:-1]): # from first to second last
+        for other_individual in pop[idx + 1:]: # from next (relative to above) to end
+
+            # pair all link indices and disable collision (num of joints = num of links)
+            for joint in range(-1, p.getNumJoints(individual)): # all joints to ...
+                for other_joint in range(-1, p.getNumJoints(other_individual)): # ... all other joints
+                    p.setCollisionFilterPair(individual, other_individual, joint, other_joint, enableCollision=0)
