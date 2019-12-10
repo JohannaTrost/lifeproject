@@ -15,7 +15,7 @@ best = 0
 
 all_gene_pools = []
 
-gene_pool = evo.make_random_gene_pool(num_inds=individuals, move_steps=move_steps)
+gene_pool = evo.new_gene_pool('random', num_inds=individuals, move_steps=move_steps)  # filename to load precomputed
 
 all_gene_pools.append(gene_pool)
 

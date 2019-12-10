@@ -8,7 +8,7 @@ def get_dist(id_ind):
     return (x ** 2 + y ** 2) ** 0.5
 
 
-def make_limb_dict():
+def _make_limb_dict():
     return {'left_arm_y': 10, 'right_arm_y': 13,
             'left_arm_z': 11, 'right_arm_z': 14,
             'left_leg_y': 4, 'right_leg_y': 7,
@@ -16,15 +16,15 @@ def make_limb_dict():
             'hip_y': 2, 'hip_x': 1}
 
 
-def move_individual(id, genome, move_step):
-    limb_dict = make_limb_dict()
+def _move_individual(obj_id, genome, move_step):
+    limb_dict = _make_limb_dict()
     for key in limb_dict.keys():
-        move_limb(id, limb_dict[key], genome[1][key][move_step % genome[2]])
+        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % genome[2]])
 
 
-def move_limb(id, limb, target_pos, force=120):
-    p.changeDynamics(id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01])
-    p.setJointMotorControl2(id,
+def _move_limb(obj_id, limb, target_pos, force=120):
+    p.changeDynamics(obj_id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01])
+    p.setJointMotorControl2(obj_id,
                             limb,
                             p.POSITION_CONTROL,
                             targetPosition=target_pos,
@@ -48,5 +48,5 @@ def _make_size_dict():
             }
 
 
-def make_random_genome(move_steps=240):
-    return _make_size_dict(), _make_move_pattern(move_steps, make_limb_dict()), move_steps
+def _make_random_genome(move_steps=240):
+    return _make_size_dict(), _make_move_pattern(move_steps, _make_limb_dict()), move_steps

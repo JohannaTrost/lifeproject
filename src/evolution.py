@@ -1,4 +1,4 @@
-from src.individual import make_random_genome, get_dist, _make_size_dict
+from src.individual import _make_random_genome, get_dist, _make_size_dict
 import numpy as np
 import random
 import pickle
@@ -17,12 +17,22 @@ def load_gene_pool(filename='src/results/latest_gene_pool.pkl'):
     return gene_pool
 
 
-def make_random_gene_pool(num_inds=10, move_steps=240):
+def _make_random_gene_pool(num_inds=10, move_steps=240):
     gene_pool = []
     for ind in range(num_inds):
-        gene_pool.append(make_random_genome(move_steps))
+        gene_pool.append(_make_random_genome(move_steps))
 
     return gene_pool
+
+
+def new_gene_pool(gene_pool, num_inds=10, move_steps=240):
+    if not isinstance(gene_pool, str):
+        return _make_random_gene_pool(num_inds=num_inds, move_steps=move_steps)
+    if isinstance(gene_pool, str):
+        if gene_pool.lower() == 'random':
+            return _make_random_gene_pool(num_inds=num_inds, move_steps=move_steps)
+        else:
+            return load_gene_pool(gene_pool)
 
 
 # define limit function
@@ -54,16 +64,16 @@ def _randoms_between(limits):
 
 
 def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, mutation_prob_feature=0.05):
-    new_gene_pool = []
+    gene_pool_out = []
+    size_keys = _make_size_dict().keys()
 
     # iterate over selected pairs
     for pair in pairs:
         move_steps = gene_pool[pair[0]][-1]
         child = [{}, {}, move_steps]
-        size_keys = _make_size_dict().keys()
 
         # make dummy genome for mutation
-        rand_child = make_random_genome(move_steps)
+        rand_child = _make_random_genome(move_steps)
 
         # assign probability for this genome to mutate
         child_mut_prob = np.random.rand()
@@ -80,7 +90,7 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, 
                     d = np.asarray(chromosomes[0][gene]) - np.asarray(chromosomes[1][gene])
                     child[idx][gene] = _randoms_between(_limit(o, d))
 
-                    # make sure to not have negative sizes
+                    # make sure to not have sizes greater than 0
                     if gene in size_keys:
                         child[idx][gene][child[idx][gene] <= 0] = 0.01
 
@@ -89,12 +99,11 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, 
                         mut_features = np.random.rand(len(child[idx][gene])) < mutation_prob_feature
                         child[idx][gene][mut_features] = rand_child[idx][gene][mut_features]
 
-        new_gene_pool.append(child)
-    return new_gene_pool
+        gene_pool_out.append(child)
+    return gene_pool_out
 
 
 def selection(pop):
-
     # sort by fitness
     sorted_pop = np.argsort([get_dist(ind) for ind in pop])[::-1]
 
@@ -107,9 +116,9 @@ def selection(pop):
     coeff = 1.1
     k = coeff ** (num_survivors + 1) - 1
     survivor_ids = list(np.round(num_survivors - (num_survivors / np.log(k + 1)) *
-                            np.log(k * np.random.rand(num_survivors) + 1)))
+                                 np.log(k * np.random.rand(num_survivors) + 1)))
 
-    survivor_ids += survivor_ids # to ensure population length
+    survivor_ids += survivor_ids  # to ensure population length
 
     pairs = []
     for this_survivor_id in survivor_ids:
