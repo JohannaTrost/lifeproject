@@ -5,7 +5,8 @@ import numpy as np
 from matplotlib import cm
 
 
-def reset_simulation(sim_id):
+def reset_simulation(pop, sim_id):
+    [p.removeBody(ind) for ind in pop]
     p.resetSimulation(sim_id)
     p.disconnect(sim_id)
 
