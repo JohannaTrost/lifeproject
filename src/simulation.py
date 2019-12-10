@@ -1,5 +1,5 @@
 import pybullet as p
-from src.individual import make_random_genome, move_individual
+from src.individual import _move_individual, _make_random_genome
 import time
 import numpy as np
 from matplotlib import cm
@@ -10,9 +10,9 @@ def reset_simulation(sim_id):
     p.disconnect(sim_id)
 
 
-def get_random_color(colormap='viridis'):
-    cmap = cm.get_cmap(colormap, 255)(np.linspace(0, 1, 255))
-    return cmap[np.random.random_integers(0, 254, 1)].tolist()[0]
+def _get_random_color(colormap='viridis'):
+    c_map = cm.get_cmap(colormap, 255)(np.linspace(0, 1, 255))
+    return c_map[np.random.random_integers(0, 254, 1)].tolist()[0]
 
 
 def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False):
@@ -33,7 +33,7 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False):
     while p.isConnected(sim_id) and step < duration_steps:
         p.stepSimulation()
         for indiv, genome in zip(pop, gene_pool):
-            move_individual(indiv, genome, step)
+            _move_individual(indiv, genome, step)
         if not direct:
             time.sleep(1. / fps)
         step += 1
@@ -74,11 +74,11 @@ def _make_mb_dict():
 
 def _genome2multi_body_data(genome=({}, {})):
     if not bool(genome[0]):
-        genome = make_random_genome()
+        genome = _make_random_genome()
 
     col_box_ids = {}
     vis_box_ids = {}
-    box_color = get_random_color()
+    box_color = _get_random_color()
     sphere_color = [sphere_color * 0.5 for sphere_color in box_color[:-1]] + [1]
     # generate visual/ collision shape ids for objects with 'new' sizes
     for limb in genome[0].keys():
@@ -166,10 +166,10 @@ def genome2simulation(genome=({}, {})):
 
 
 def disable_collision(pop):
-    for idx, individual in enumerate(pop[:-1]): # from first to second last
-        for other_individual in pop[idx + 1:]: # from next (relative to above) to end
+    for idx, individual in enumerate(pop[:-1]):  # from first to second last
+        for other_individual in pop[idx + 1:]:  # from next (relative to above) to end
 
             # pair all link indices and disable collision (num of joints = num of links)
-            for joint in range(-1, p.getNumJoints(individual)): # all joints to ...
-                for other_joint in range(-1, p.getNumJoints(other_individual)): # ... all other joints
+            for joint in range(-1, p.getNumJoints(individual)):  # all joints to ...
+                for other_joint in range(-1, p.getNumJoints(other_individual)):  # ... all other joints
                     p.setCollisionFilterPair(individual, other_individual, joint, other_joint, 0)
