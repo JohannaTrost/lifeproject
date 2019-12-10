@@ -4,18 +4,24 @@ import time
 import numpy as np
 from matplotlib import cm
 
+
+def reset_simulation(sim_id):
+    p.resetSimulation(sim_id)
+    p.disconnect(sim_id)
+
+
 def get_random_color(colormap='viridis'):
     cmap = cm.get_cmap(colormap, 255)(np.linspace(0, 1, 255))
     return cmap[np.random.random_integers(0, 254, 1)].tolist()[0]
 
 
-def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
+def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False):
     if direct:
         sim_id = make_sim_env('direct')
     else:
         sim_id = make_sim_env('gui')
 
-    pop = [genome2simulation(genome) for genome in genomes]
+    pop = [genome2simulation(genome) for genome in gene_pool]
     disable_collision(pop)
 
     # simulate
@@ -26,11 +32,13 @@ def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
     step = 0
     while p.isConnected(sim_id) and step < duration_steps:
         p.stepSimulation()
-        for indiv, genome in zip(pop, genomes):
+        for indiv, genome in zip(pop, gene_pool):
             move_individual(indiv, genome, step)
-        time.sleep(1. / fps)
+        if not direct:
+            time.sleep(1. / fps)
         step += 1
     return pop, sim_id
+
 
 def make_sim_env(gui_or_direct):
 
