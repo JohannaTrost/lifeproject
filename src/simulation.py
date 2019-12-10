@@ -10,19 +10,14 @@ def reset_simulation(sim_id):
     p.disconnect(sim_id)
 
 
-def _get_random_color(colormap='viridis'):
-    c_map = cm.get_cmap(colormap, 255)(np.linspace(0, 1, 255))
-    return c_map[np.random.random_integers(0, 254, 1)].tolist()[0]
-
-
 def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False):
     if direct:
         sim_id = make_sim_env('direct')
     else:
         sim_id = make_sim_env('gui')
 
-    pop = [genome2simulation(genome) for genome in gene_pool]
-    disable_collision(pop)
+    pop = [_genome2simulation(genome) for genome in gene_pool]
+    _disable_collision(pop)
 
     # simulate
     duration_steps = fps * duration_in_sec
@@ -70,6 +65,11 @@ def _make_mb_dict():
                             p.JOINT_REVOLUTE, p.JOINT_REVOLUTE, p.JOINT_FIXED, p.JOINT_FIXED, p.JOINT_FIXED,
                             p.JOINT_FIXED],
             'axis': [[0, 0, 1]] * 16}
+
+
+def _get_random_color(colormap='viridis'):
+    c_map = cm.get_cmap(colormap, 255)(np.linspace(0, 1, 255))
+    return c_map[np.random.random_integers(0, 254, 1)].tolist()[0]
 
 
 def _genome2multi_body_data(genome=({}, {})):
@@ -139,7 +139,7 @@ def _genome2multi_body_data(genome=({}, {})):
     return mb, col_sphere_id_chest, vis_sphere_id_chest
 
 
-def genome2simulation(genome=({}, {})):
+def _genome2simulation(genome=({}, {})):
     if not bool(genome[0]):
         mb_data = _genome2multi_body_data()
     else:
@@ -165,7 +165,7 @@ def genome2simulation(genome=({}, {})):
                              useMaximalCoordinates=False)
 
 
-def disable_collision(pop):
+def _disable_collision(pop):
     for idx, individual in enumerate(pop[:-1]):  # from first to second last
         for other_individual in pop[idx + 1:]:  # from next (relative to above) to end
 

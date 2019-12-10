@@ -17,14 +17,6 @@ def load_gene_pool(filename='src/results/latest_gene_pool.pkl'):
     return gene_pool
 
 
-def _make_random_gene_pool(num_inds=10, move_steps=240):
-    gene_pool = []
-    for ind in range(num_inds):
-        gene_pool.append(_make_random_genome(move_steps))
-
-    return gene_pool
-
-
 def new_gene_pool(gene_pool, num_inds=10, move_steps=240):
     if not isinstance(gene_pool, str):
         return _make_random_gene_pool(num_inds=num_inds, move_steps=move_steps)
@@ -33,34 +25,6 @@ def new_gene_pool(gene_pool, num_inds=10, move_steps=240):
             return _make_random_gene_pool(num_inds=num_inds, move_steps=move_steps)
         else:
             return load_gene_pool(gene_pool)
-
-
-# define limit function
-def _limit(mid, diff, a=0.5):
-    limit_1 = np.asarray(mid) + np.asarray(diff) / 2 + a * np.asarray(diff)
-    limit_2 = np.asarray(mid) - np.asarray(diff) / 2 - a * np.asarray(diff)
-    # determine upper and lower bound
-    limits_sorted = np.sort([limit_1, limit_2], axis=0)
-    lower_bounds = np.array(limits_sorted[0])
-    upper_bounds = np.array(limits_sorted[1])
-
-    return lower_bounds, upper_bounds
-
-
-def _randoms_between(limits):
-    lows = np.array(limits[0])
-    highs = np.array(limits[1])
-    # abs difference to shift random distribution that is natively between 0 and 1
-    # you modify the range of values by multiplying and shift the lowest values by adding
-    # Example: if you want random values between 1 and 3 you say: rand * 2 + 1, etc
-
-    # array of random values between 0 and 1
-    rand_values = np.random.rand(len(highs))  # len(high) == len(low)
-    differences = highs - lows
-    # random values between lower bound of limits and bound of limits + abs_difference
-    rand_in_limits = (rand_values * differences) + lows
-
-    return rand_in_limits
 
 
 def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, mutation_prob_feature=0.05):
@@ -128,3 +92,39 @@ def selection(pop):
         not_this_survivor_id = int(random.choice(not_this_survivor_ids))
         pairs.append((sorted_pop[int(this_survivor_id)], sorted_pop[not_this_survivor_id]))
     return pairs
+
+
+# define limit function
+def _limit(mid, diff, a=0.5):
+    limit_1 = np.asarray(mid) + np.asarray(diff) / 2 + a * np.asarray(diff)
+    limit_2 = np.asarray(mid) - np.asarray(diff) / 2 - a * np.asarray(diff)
+    # determine upper and lower bound
+    limits_sorted = np.sort([limit_1, limit_2], axis=0)
+    lower_bounds = np.array(limits_sorted[0])
+    upper_bounds = np.array(limits_sorted[1])
+
+    return lower_bounds, upper_bounds
+
+
+def _randoms_between(limits):
+    lows = np.array(limits[0])
+    highs = np.array(limits[1])
+    # abs difference to shift random distribution that is natively between 0 and 1
+    # you modify the range of values by multiplying and shift the lowest values by adding
+    # Example: if you want random values between 1 and 3 you say: rand * 2 + 1, etc
+
+    # array of random values between 0 and 1
+    rand_values = np.random.rand(len(highs))  # len(high) == len(low)
+    differences = highs - lows
+    # random values between lower bound of limits and bound of limits + abs_difference
+    rand_in_limits = (rand_values * differences) + lows
+
+    return rand_in_limits
+
+
+def _make_random_gene_pool(num_inds=10, move_steps=240):
+    gene_pool = []
+    for ind in range(num_inds):
+        gene_pool.append(_make_random_genome(move_steps))
+
+    return gene_pool
