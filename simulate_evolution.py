@@ -60,7 +60,7 @@ def main():
         stats.append([generations, avg_dist, best])
 
         # reset simulation
-        reset_simulation(sim_id)
+        reset_simulation(pop, sim_id)
 
     plt.figure()
     plt.plot(st.load_stats()[:, 1])
