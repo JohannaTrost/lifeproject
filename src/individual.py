@@ -5,15 +5,15 @@ import numpy as np
 def get_dist(id_ind):
     x = p.getBasePositionAndOrientation(id_ind)[0][0]
     y = p.getBasePositionAndOrientation(id_ind)[0][0]
-    return (x**2 + y**2)**0.5
+    return (x ** 2 + y ** 2) ** 0.5
 
 
 def make_limb_dict():
     return {'left_arm_y': 10, 'right_arm_y': 13,
-                 'left_arm_z': 11, 'right_arm_z': 14,
-                 'left_leg_y': 4, 'right_leg_y': 7,
-                 'left_leg_z': 5, 'right_leg_z': 8,
-                 'hip_y': 2, 'hip_x': 1}
+            'left_arm_z': 11, 'right_arm_z': 14,
+            'left_leg_y': 4, 'right_leg_y': 7,
+            'left_leg_z': 5, 'right_leg_z': 8,
+            'hip_y': 2, 'hip_x': 1}
 
 
 def move_individual(id, genome, move_step):
@@ -38,13 +38,15 @@ def _make_move_pattern(size_pattern, limb_dict):
     return move_dict
 
 
+def _make_size_dict():
+    return {'left_hand': np.random.rand(3) / 2 + 0.4,
+            'right_hand': np.random.rand(3) / 2 + 0.4,
+            'left_foot': np.random.rand(3) / 2 + 0.4,
+            'right_foot': np.random.rand(3) / 2 + 0.4,
+            'chest': np.random.rand(3) / 2 + 0.4,
+            'hip': np.random.rand(3) / 2 + 0.4,
+            }
+
+
 def make_random_genome(move_steps=240):
-    move_dict = _make_move_pattern(move_steps, make_limb_dict())
-    box_sizes = {'left_hand': np.random.rand(3) / 2 + 0.4,
-                 'right_hand': np.random.rand(3) / 2 + 0.4,
-                 'left_foot': np.random.rand(3) / 2 + 0.4,
-                 'right_foot': np.random.rand(3) / 2 + 0.4,
-                 'chest': np.random.rand(3) / 2 + 0.4,
-                 'hip': np.random.rand(3) / 2 + 0.4,
-                 }
-    return box_sizes, move_dict, move_steps
+    return _make_size_dict(), _make_move_pattern(move_steps, make_limb_dict()), move_steps
