@@ -66,12 +66,14 @@ def main():
     plt.plot(st.load_stats()[:, 1])
     plt.savefig('src/results/latest_results.jpg')
 
+    st.save_stats(stats, filename='src/results/stats_{}gen_{}ind_{}dur_{}steps.pkl'.format(
+                           generations, individuals, duration_per_simulation_in_sec, move_steps))
     st.save_stats(stats)
 
     # below can cause large files
-    # evo.save_gene_pool(all_gene_pools,
-    #                    filename='src/results/all_gene_pools_{}gen_{}ind_{}dur_{}steps.pkl'.format(
-    #                        generations, individuals, duration_per_simulation_in_sec, move_steps))
+    evo.save_gene_pool(all_gene_pools,
+                       filename='src/results/all_gene_pools_{}gen_{}ind_{}dur_{}steps.pkl'.format(
+                           generations, individuals, duration_per_simulation_in_sec, move_steps))
 
     evo.save_gene_pool(gene_pool)
 
