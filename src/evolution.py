@@ -13,8 +13,7 @@ def make_random_pop(num_inds=10, move_steps=240):
 def selection(pop):
 
     # sort by fitness
-    sorted_pop_inds = np.argsort([get_dist(ind) for ind in pop])[::-1]
-    sorted_pop = [pop[best] for best in sorted_pop_inds]
+    sorted_pop = np.argsort([get_dist(ind) for ind in pop])[::-1]
 
     # want to keep 50% of the pop
     num_survivors = int(0.5 * len(sorted_pop))
