@@ -13,7 +13,11 @@ individuals = 20
 stats = []
 best = 0
 
+all_gene_pools = []
+
 gene_pool = evo.make_random_gene_pool(num_inds=individuals, move_steps=move_steps)
+
+all_gene_pools.append(gene_pool)
 
 for generation in range(generations):
     pop, sim_id = simulate_pop(gene_pool, fps=fps, duration_in_sec=duration_per_simulation_in_sec, direct=True)
@@ -27,6 +31,7 @@ for generation in range(generations):
     best = selected[0][0]
     gene_pool = evo.crossing(selected, gene_pool)
 
+    all_gene_pools.append(gene_pool)
     # collect data on population
     stats.append([generations, avg_dist, best])
 
@@ -34,6 +39,7 @@ for generation in range(generations):
     reset_simulation(sim_id)
 
 st.save_stats(stats)
+evo.save_gene_pool(all_gene_pools, filename='src/results/latest_gene_pool_over_generations.pkl')
 evo.save_gene_pool(gene_pool)
 
 if show_best:
