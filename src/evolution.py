@@ -27,7 +27,9 @@ def new_gene_pool(gene_pool, num_inds=10, move_steps=240):
             return load_gene_pool(gene_pool)
 
 
-def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, mutation_prob_feature=0.05):
+def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
+             mutation_prob_feature=0.05):
+
     gene_pool_out = []
     size_keys = _make_size_dict().keys()
 
