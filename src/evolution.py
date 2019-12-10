@@ -1,4 +1,4 @@
-from src.individual import make_random_genome, get_dist
+from src.individual import make_random_genome, get_dist, _make_size_dict
 import numpy as np
 import random
 import pickle
@@ -60,6 +60,7 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, 
     for pair in pairs:
         move_steps = gene_pool[pair[0]][-1]
         child = [{}, {}, move_steps]
+        size_keys = _make_size_dict().keys()
 
         # make dummy genome for mutation
         rand_child = make_random_genome(move_steps)
@@ -78,6 +79,10 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, 
                     o = np.mean([chromosomes[0][gene], chromosomes[1][gene]], axis=0)
                     d = np.asarray(chromosomes[0][gene]) - np.asarray(chromosomes[1][gene])
                     child[idx][gene] = _randoms_between(_limit(o, d))
+
+                    # make sure to not have negative sizes
+                    if gene in size_keys:
+                        child[idx][gene][child[idx][gene] <= 0] = 0.01
 
                     # mutate if probability allows
                     if child_mut_prob < mutation_prob_ind and np.random.rand() < mutation_prob_gene:

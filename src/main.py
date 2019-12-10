@@ -8,7 +8,7 @@ move_steps = int(motion_pattern_duration * fps)
 
 show_best = 0
 duration_per_simulation_in_sec = 10
-generations = 3
+generations = 50
 individuals = 20
 stats = []
 best = 0
@@ -39,7 +39,10 @@ for generation in range(generations):
     reset_simulation(sim_id)
 
 st.save_stats(stats)
-evo.save_gene_pool(all_gene_pools, filename='src/results/latest_gene_pool_over_generations.pkl')
+evo.save_gene_pool(all_gene_pools,
+                   filename='src/results/all_gene_pools_{}gen_{}ind_{}dur_{}steps.pkl'.format(
+                       generations, individuals, duration_per_simulation_in_sec, move_steps))
+
 evo.save_gene_pool(gene_pool)
 
 if show_best:
