@@ -37,5 +37,4 @@ def selection(pop):
         not_this_survivor_id = int(random.choice(not_this_survivor_ids))
         parents.append((sorted_pop[int(this_survivor_id)],
                         sorted_pop[not_this_survivor_id]))
-
     return parents

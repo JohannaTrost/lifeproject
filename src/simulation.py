@@ -4,7 +4,6 @@ import time
 import numpy as np
 from matplotlib import cm
 
-
 def get_random_color(colormap='viridis'):
     cmap = cm.get_cmap(colormap, 255)(np.linspace(0, 1, 255))
     return cmap[np.random.random_integers(0, 254, 1)].tolist()[0]
@@ -31,8 +30,7 @@ def simulate_pop(genomes, fps=240, duration_in_sec=-1, direct=False):
             move_individual(indiv, genome, step)
         time.sleep(1. / fps)
         step += 1
-
-    return pop
+    return pop, sim_id
 
 def make_sim_env(gui_or_direct):
 
