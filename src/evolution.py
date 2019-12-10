@@ -1,6 +1,21 @@
 from src.individual import make_random_genome, get_dist
 import numpy as np
 import random
+import pickle
+
+
+def save_gene_pool(gene_pool, filename='src/results/latest_gene_pool.pkl'):
+    output = open(filename, 'wb')
+    pickle.dump(gene_pool, output)
+    output.close()
+
+
+def load_gene_pool(filename='src/results/latest_gene_pool.pkl'):
+    pkl_file = open(filename, 'rb')
+    gene_pool = pickle.load(pkl_file)
+    pkl_file.close()
+    return gene_pool
+
 
 def make_random_gene_pool(num_inds=10, move_steps=240):
     gene_pool = []
@@ -39,7 +54,7 @@ def _randoms_between(limits):
 
 
 def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, mutation_prob_feature=0.05):
-    new_genome = []
+    new_gene_pool = []
 
     # iterate over selected pairs
     for pair in pairs:
@@ -69,8 +84,8 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05, 
                         mut_features = np.random.rand(len(child[idx][gene])) < mutation_prob_feature
                         child[idx][gene][mut_features] = rand_child[idx][gene][mut_features]
 
-        new_genome.append(child)
-    return new_genome
+        new_gene_pool.append(child)
+    return new_gene_pool
 
 
 def selection(pop):
@@ -97,6 +112,5 @@ def selection(pop):
         # between the selected survivor and the others
         not_this_survivor_ids = np.setdiff1d(survivor_ids, this_survivor_id)
         not_this_survivor_id = int(random.choice(not_this_survivor_ids))
-        pairs.append((sorted_pop[int(this_survivor_id)],
-                        sorted_pop[not_this_survivor_id]))
+        pairs.append((sorted_pop[int(this_survivor_id)], sorted_pop[not_this_survivor_id]))
     return pairs
