@@ -2,9 +2,9 @@ import pybullet as p
 import numpy as np
 
 
-def get_dist(id_ind, sim_id):
-    x = p.getBasePositionAndOrientation(id_ind, physicsClientId=sim_id)[0][0]
-    y = p.getBasePositionAndOrientation(id_ind, physicsClientId=sim_id)[0][0]
+def get_dist(id_ind):
+    x = p.getBasePositionAndOrientation(id_ind)[0][0]
+    y = p.getBasePositionAndOrientation(id_ind)[0][0]
     return (x ** 2 + y ** 2) ** 0.5
 
 
@@ -16,20 +16,19 @@ def _make_limb_dict():
             'hip_y': 2, 'hip_x': 1}
 
 
-def _move_individual(obj_id, genome, move_step, sim_id):
+def _move_individual(obj_id, genome, move_step):
     limb_dict = _make_limb_dict()
     for key in limb_dict.keys():
-        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % genome[2]], sim_id)
+        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % genome[2]])
 
 
-def _move_limb(obj_id, limb, target_pos, sim_id, force=120):
-    p.changeDynamics(obj_id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01], physicsClientId=sim_id)
+def _move_limb(obj_id, limb, target_pos, force=120):
+    p.changeDynamics(obj_id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01])
     p.setJointMotorControl2(obj_id,
                             limb,
                             p.POSITION_CONTROL,
                             targetPosition=target_pos,
-                            force=force,
-                            physicsClientId=sim_id)
+                            force=force)
 
 
 def _make_move_pattern(size_pattern, limb_dict):

@@ -2,8 +2,8 @@ import numpy as np
 from src.individual import get_dist
 
 
-def avg_dist(pop, sim_id):
-    return np.mean([get_dist(ind, sim_id) for ind in pop])
+def avg_dist(pop):
+    return np.mean([get_dist(ind) for ind in pop])
 
 
 def save_stats(stats, filename='src/results/latest_results.csv'):

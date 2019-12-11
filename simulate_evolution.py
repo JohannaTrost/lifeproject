@@ -1,4 +1,4 @@
-from src.simulation import simulate_pop, reset_simulation, simulate_multicore
+from src.simulation import simulate_pop, simulate_multicore
 import src.evolution as evo
 import src.stats as st
 import argparse
@@ -60,20 +60,11 @@ def main():
     all_gene_pools.append(gene_pool)
 
     for generation in range(generations):
-        if cores == 1:
-            pop, sim_id = simulate_pop(gene_pool, fps=fps, duration_in_sec=duration_per_simulation_in_sec, direct=True)
-            # evolute
-            selected = evo.selection(np.argsort(evo.fitness(pop, sim_id)))
-            avg_dist = st.avg_dist(pop, sim_id)
+        fitness = simulate_multicore(gene_pool, fps=fps,
+                                     duration_in_sec=duration_per_simulation_in_sec, num_cores=cores)
 
-            # reset simulation
-            reset_simulation(pop, sim_id)
-        else:
-            fitness = simulate_multicore(gene_pool, fps=fps,
-                                         duration_in_sec=duration_per_simulation_in_sec, num_cores=cores)
-
-            selected = evo.selection(np.argsort(fitness))
-            avg_dist = np.mean(fitness)
+        selected = evo.selection(np.argsort(fitness)[::-1])
+        avg_dist = np.mean(fitness)
 
 
         print('generation {} | avg distance {}'.format(generation, avg_dist))
