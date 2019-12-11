@@ -8,9 +8,8 @@ import multiprocessing as mp
 
 
 def reset_simulation(pop, sim_id):
-    [p.removeBody(ind, physicsClientId=sim_id) for ind in pop]
-    p.resetSimulation(sim_id)
-    p.disconnect(sim_id)
+    p.resetSimulation(physicsClientId=sim_id)
+    p.disconnect(physicsClientId=sim_id)
 
 
 def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=-1):
@@ -47,8 +46,8 @@ def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=-1):
 
     return fitness_all
 
-def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, sim_id=-1):
-    if sim_id < 0:
+def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, sim_id=None):
+    if sim_id is None:
         if direct:
             sim_id = make_sim_env('direct')
         else:
