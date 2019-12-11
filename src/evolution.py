@@ -69,9 +69,11 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
     return gene_pool_out
 
 
-def selection(pop):
-    # sort by fitness
-    sorted_pop = np.argsort([get_dist(ind) for ind in pop])[::-1]
+def fitness(pop, sim_id):
+    return [get_dist(ind, sim_id) for ind in pop]
+
+
+def selection(sorted_pop):
 
     # want to keep 50% of the pop
     num_survivors = int(0.5 * len(sorted_pop))

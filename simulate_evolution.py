@@ -1,11 +1,24 @@
-from src.simulation import simulate_pop, reset_simulation
+from src.simulation import simulate_pop, reset_simulation, simulate_multicore
 import src.evolution as evo
 import src.stats as st
 import argparse
 import matplotlib.pylab as plt
+import numpy as np
 
 
 def main():
+
+    # defaults for running as script
+    motion_pattern_duration = 1
+    fps = 240
+    move_steps = int(motion_pattern_duration * fps)
+
+    duration_per_simulation_in_sec = 10
+    generations = 10
+    individuals = 10
+    cores = 8
+
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--individuals', '-i', default=10, type=int,
                         help='number of individuals')
@@ -17,6 +30,8 @@ def main():
                         help='frames per second')
     parser.add_argument('--pattern_duration', '-pd', default=1, type=int,
                         help='duration of motion pattern in seconds')
+    parser.add_argument('--cores', '-c', default=1, type=int,
+                        help='number of CPU cores (default=1) Set to -1 for all cores')
     args = parser.parse_args()
 
     print('Individuals : {}'.format(args.individuals))
@@ -24,6 +39,7 @@ def main():
     print('Duration per simulation: {}s'.format(args.duration))
     print('FPS: {}'.format(args.fps))
     print('Motion pattern duration: {}s'.format(args.pattern_duration))
+    print('Number of cores utilized: {}'.format(args.cores))
     print('')
 
     motion_pattern_duration = args.pattern_duration
@@ -33,7 +49,7 @@ def main():
     duration_per_simulation_in_sec = args.duration
     generations = args.generations
     individuals = args.individuals
-
+    cores = args.cores
     show_best = False
 
     stats = []
@@ -44,14 +60,24 @@ def main():
     all_gene_pools.append(gene_pool)
 
     for generation in range(generations):
-        pop, sim_id = simulate_pop(gene_pool, fps=fps, duration_in_sec=duration_per_simulation_in_sec, direct=True)
+        if cores == 1:
+            pop, sim_id = simulate_pop(gene_pool, fps=fps, duration_in_sec=duration_per_simulation_in_sec, direct=True)
+            # evolute
+            selected = evo.selection(np.argsort(evo.fitness(pop, sim_id)))
+            avg_dist = st.avg_dist(pop, sim_id)
 
-        avg_dist = st.avg_dist(pop)
+            # reset simulation
+            reset_simulation(pop, sim_id)
+        else:
+            fitness = simulate_multicore(gene_pool, fps=fps,
+                                         duration_in_sec=duration_per_simulation_in_sec, num_cores=cores)
+
+            selected = evo.selection(np.argsort(fitness))
+            avg_dist = np.mean(fitness)
+
 
         print('generation {} | avg distance {}'.format(generation, avg_dist))
 
-        # evolute
-        selected = evo.selection(pop)
         best = selected[0][0]
         gene_pool = evo.crossing(selected, gene_pool)
 
@@ -59,11 +85,8 @@ def main():
         # collect data on population
         stats.append([generations, avg_dist, best])
 
-        # reset simulation
-        reset_simulation(pop, sim_id)
-
     plt.figure()
-    plt.plot(st.load_stats()[:, 1])
+    plt.plot(stats[:, 1])
     plt.savefig('src/results/latest_results.jpg')
 
     st.save_stats(stats, filename='src/results/stats_{}gen_{}ind_{}dur_{}steps.pkl'.format(
