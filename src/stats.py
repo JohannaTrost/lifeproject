@@ -1,5 +1,11 @@
 import numpy as np
-from src.individual import get_dist
+from src.individual import get_dist, _get_pos
+
+
+def track_individual(ind, sim_id, tracker_list):
+    x, y = _get_pos(ind, sim_id)
+    tracker_list.append([x, y])
+    return tracker_list
 
 
 def avg_dist(pop, sim_id):

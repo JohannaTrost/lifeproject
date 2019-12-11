@@ -1,8 +1,8 @@
-from src.simulation import simulate_pop, simulate_multicore, make_sim_env
+from src.simulation import simulate_pop, simulate_multicore, make_sim_env, reset_simulation
 import src.evolution as evo
 import src.stats as st
+import src.data2plot as data2plot
 import argparse
-import matplotlib.pylab as plt
 import numpy as np
 from multiprocessing import cpu_count
 
@@ -71,8 +71,11 @@ def main():
     print('Connecting to physics server {}'.format(sim_ids))
 
     for generation in range(generations):
-        fitness = simulate_multicore(gene_pool, fps=fps,
-                                     duration_in_sec=duration_per_simulation_in_sec, num_cores=cores, sim_ids=sim_ids)
+        fitness = simulate_multicore(gene_pool,
+                                     fps=fps,
+                                     duration_in_sec=duration_per_simulation_in_sec,
+                                     num_cores=cores,
+                                     sim_ids=sim_ids)
 
         selected = evo.selection(np.argsort(fitness)[::-1])
         avg_dist = np.mean(fitness)
@@ -87,10 +90,6 @@ def main():
         # collect data on population
         stats.append([generations, avg_dist, best])
 
-    plt.figure()
-    plt.plot(stats[:, 1])
-    plt.savefig('src/results/latest_results.jpg')
-
     st.save_stats(stats, filename='src/results/stats_{}gen_{}ind_{}dur_{}steps.pkl'.format(
                            generations, individuals, duration_per_simulation_in_sec, move_steps))
     st.save_stats(stats)
@@ -103,11 +102,19 @@ def main():
     evo.save_gene_pool(gene_pool)
 
     if show_best:
+
         # show best parent
         stats = st.load_stats()
+        best = int(stats[-1, -1])
         gene_pool = evo.load_gene_pool()
-        simulate_pop([gene_pool[int(stats[-1, -1])]], fps=fps, duration_in_sec=-1, direct=False)
+        _, sim_id, tracker = simulate_pop([gene_pool[best]],
+                     fps=fps,
+                     duration_in_sec=duration_per_simulation_in_sec,
+                     track_individuals=True,
+                     direct=False)
+        reset_simulation(sim_id)
 
-
+        best_path = np.asarray(tracker[1])
+        data2plot.show_path(best_path)
 if __name__ == '__main__':
     main()

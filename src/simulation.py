@@ -1,5 +1,5 @@
 import pybullet as p
-from src.individual import _move_individual, _make_random_genome
+from src.individual import _move_individual, _make_random_genome, _get_pos
 from src.evolution import fitness
 import time
 import numpy as np
@@ -7,16 +7,16 @@ from matplotlib import cm
 import multiprocessing as mp
 
 
-def reset_simulation(pop, sim_id):
+def reset_simulation(sim_id):
     p.resetSimulation(physicsClientId=sim_id)
     p.disconnect(physicsClientId=sim_id)
 
 
 def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim_ids=None):
     def worker(ind, p_gene_pool, fps, duration_in_sec, sim_id, qout):
-        pop, sim_id = simulate_pop(p_gene_pool.tolist(), fps, duration_in_sec, direct=True, sim_id=sim_id)
+        pop, sim_id, _ = simulate_pop(p_gene_pool.tolist(), fps, duration_in_sec, direct=True, sim_id=sim_id)
         qout.put((ind, fitness(pop, sim_id)))
-        reset_simulation(pop, sim_id)
+        reset_simulation(sim_id)
 
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
 
@@ -44,7 +44,7 @@ def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim_
 
     return fitness_all
 
-def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, sim_id=None):
+def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_individuals=False, sim_id=None):
     if sim_id is None:
         if direct:
             sim_id = make_sim_env('direct')
@@ -60,14 +60,23 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, sim_id=No
         duration_steps = np.Inf
 
     step = 0
+    ind_tracker = {}
     while p.isConnected(sim_id) and step < duration_steps:
         p.stepSimulation(physicsClientId=sim_id)
+
         for indiv, genome in zip(pop, gene_pool):
             _move_individual(indiv, genome, step, sim_id)
+            if track_individuals:
+                x, y = _get_pos(indiv, sim_id)
+                if indiv in ind_tracker.keys():
+                    ind_tracker[indiv].append([x, y])
+                else:
+                    ind_tracker[indiv] = [[x, y]]
+
         if not direct:
             time.sleep(1. / fps)
         step += 1
-    return pop, sim_id
+    return pop, sim_id, ind_tracker
 
 
 def make_sim_env(gui_or_direct):

@@ -2,9 +2,13 @@ import pybullet as p
 import numpy as np
 
 
+def _get_pos(id_ind, sim_id):
+    x, y = p.getBasePositionAndOrientation(id_ind, physicsClientId=sim_id)[0][0:2]
+    return x, y
+
+
 def get_dist(id_ind, sim_id):
-    x = p.getBasePositionAndOrientation(id_ind, physicsClientId=sim_id)[0][0]
-    y = p.getBasePositionAndOrientation(id_ind, physicsClientId=sim_id)[0][0]
+    x, y = _get_pos(id_ind, sim_id)
     return (x ** 2 + y ** 2) ** 0.5
 
 
