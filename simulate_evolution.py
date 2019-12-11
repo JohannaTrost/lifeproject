@@ -1,4 +1,4 @@
-from src.simulation import simulate_pop, simulate_multicore, make_sim_env, reset_simulation
+from src.simulation import simulate_pop, simulate_multi_core, make_sim_env, reset_simulation
 import src.evolution as evo
 import src.stats as st
 import src.data2plot as data2plot
@@ -6,8 +6,8 @@ import argparse
 import numpy as np
 from multiprocessing import cpu_count
 
-def main():
 
+def main():
     # defaults for running as script
     motion_pattern_duration = 1
     fps = 240
@@ -17,7 +17,6 @@ def main():
     generations = 10
     individuals = 10
     cores = 8
-
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--individuals', '-i', default=10, type=int,
@@ -45,7 +44,6 @@ def main():
     print('Number of cores utilized: {}'.format(args.cores))
     print('')
 
-
     motion_pattern_duration = args.pattern_duration
     fps = args.fps
     move_steps = int(motion_pattern_duration * fps)
@@ -71,27 +69,27 @@ def main():
     print('Connecting to physics server {}'.format(sim_ids))
 
     for generation in range(generations):
-        fitness = simulate_multicore(gene_pool,
-                                     fps=fps,
-                                     duration_in_sec=duration_per_simulation_in_sec,
-                                     num_cores=cores,
-                                     sim_ids=sim_ids)
+        fitness = simulate_multi_core(gene_pool,
+                                      fps=fps,
+                                      duration_in_sec=duration_per_simulation_in_sec,
+                                      num_cores=cores,
+                                      sim_ids=sim_ids)
 
-        selected = evo.selection(np.argsort(fitness)[::-1])
+        sorted_genome_ids = np.argsort(fitness)[::-1]
+        selected = evo.selection(sorted_genome_ids)
         avg_dist = np.mean(fitness)
-
 
         print('generation {} | avg distance {}'.format(generation, avg_dist))
 
-        best = selected[0][0]
+        best = sorted_genome_ids[0]
         gene_pool = evo.crossing(selected, gene_pool)
 
         all_gene_pools.append(gene_pool)
         # collect data on population
-        stats.append([generations, avg_dist, best])
+        stats.append([generation, avg_dist, best, fitness[best]])
 
     st.save_stats(stats, filename='src/results/stats_{}gen_{}ind_{}dur_{}steps.pkl'.format(
-                           generations, individuals, duration_per_simulation_in_sec, move_steps))
+        generations, individuals, duration_per_simulation_in_sec, move_steps))
     st.save_stats(stats)
 
     # below can cause large files
@@ -102,19 +100,20 @@ def main():
     evo.save_gene_pool(gene_pool)
 
     if show_best:
-
         # show best parent
         stats = st.load_stats()
         best = int(stats[-1, -1])
         gene_pool = evo.load_gene_pool()
         _, sim_id, tracker = simulate_pop([gene_pool[best]],
-                     fps=fps,
-                     duration_in_sec=duration_per_simulation_in_sec,
-                     track_individuals=True,
-                     direct=False)
+                                          fps=fps,
+                                          duration_in_sec=duration_per_simulation_in_sec,
+                                          track_individuals=True,
+                                          direct=False)
         reset_simulation(sim_id)
 
         best_path = np.asarray(tracker[1])
         data2plot.show_path(best_path)
+
+
 if __name__ == '__main__':
     main()
