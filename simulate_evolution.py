@@ -104,14 +104,14 @@ def main():
         stats = st.load_stats()
         best = int(stats[-1, -1])
         gene_pool = evo.load_gene_pool()
-        _, sim_id, tracker = simulate_pop([gene_pool[best]],
-                                          fps=fps,
-                                          duration_in_sec=duration_per_simulation_in_sec,
-                                          track_individuals=True,
-                                          direct=False)
+        pop, sim_id, tracker = simulate_pop([gene_pool[best]],
+                                            fps=fps,
+                                            duration_in_sec=duration_per_simulation_in_sec,
+                                            track_individuals=True,
+                                            direct=False)
         reset_simulation(sim_id)
 
-        best_path = np.asarray(tracker[1])
+        best_path = np.asarray(tracker[pop[0]])
         data2plot.show_path(best_path)
 
 
