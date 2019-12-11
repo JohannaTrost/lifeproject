@@ -23,7 +23,7 @@ def _move_individual(obj_id, genome, move_step, sim_id):
 
 
 def _move_limb(obj_id, limb, target_pos, sim_id, force=120):
-    p.changeDynamics(obj_id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01])
+    p.changeDynamics(obj_id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01], physicsClientId=sim_id)
     p.setJointMotorControl2(obj_id,
                             limb,
                             p.POSITION_CONTROL,

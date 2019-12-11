@@ -81,7 +81,7 @@ def make_sim_env(gui_or_direct):
         sim_id = p.connect(p.DIRECT)
 
     p.setGravity(0, 0, -9.81, physicsClientId=sim_id)
-    p.createMultiBody(0, p.createCollisionShape(p.GEOM_PLANE), physicsClientId=sim_id)
+    p.createMultiBody(0, p.createCollisionShape(p.GEOM_PLANE, physicsClientId=sim_id), physicsClientId=sim_id)
     return sim_id
 
 
@@ -129,7 +129,8 @@ def _genome2multi_body_data(sim_id, genome=({}, {})):
                                               rgbaColor=sphere_color, physicsClientId=sim_id)
     col_sphere_id_chest = p.createCollisionShape(p.GEOM_SPHERE, radius=genome[0]['chest'][2], physicsClientId=sim_id)
     # analog for hip
-    vis_sphere_id_hip = p.createVisualShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2], rgbaColor=sphere_color, physicsClientId=sim_id)
+    vis_sphere_id_hip = p.createVisualShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2], rgbaColor=sphere_color,
+                                            physicsClientId=sim_id)
     col_sphere_id_hip = p.createCollisionShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2], physicsClientId=sim_id)
 
     # fill multi body parameter values
@@ -209,6 +210,6 @@ def _disable_collision(sim_id, pop):
         for other_individual in pop[idx + 1:]:  # from next (relative to above) to end
 
             # pair all link indices and disable collision (num of joints = num of links)
-            for joint in range(-1, p.getNumJoints(individual)):  # all joints to ...
-                for other_joint in range(-1, p.getNumJoints(other_individual)):  # ... all other joints
+            for joint in range(-1, p.getNumJoints(individual, physicsClientId=sim_id)):  # all joints to ...
+                for other_joint in range(-1, p.getNumJoints(other_individual, physicsClientId=sim_id)):  # ... all other joints
                     p.setCollisionFilterPair(individual, other_individual, joint, other_joint, 0,physicsClientId=sim_id)
