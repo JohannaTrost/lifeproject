@@ -1,10 +1,10 @@
-from src.simulation import simulate_pop, simulate_multicore
+from src.simulation import simulate_pop, simulate_multicore, make_sim_env
 import src.evolution as evo
 import src.stats as st
 import argparse
 import matplotlib.pylab as plt
 import numpy as np
-
+from multiprocessing import cpu_count
 
 def main():
 
@@ -34,13 +34,17 @@ def main():
                         help='number of CPU cores (default=1) Set to -1 for all cores')
     args = parser.parse_args()
 
-    print('Individuals : {}'.format(args.individuals))
+    if args.cores == -1:
+        args.cores = cpu_count()
+
+    print('Individuals: {}'.format(args.individuals))
     print('Generations: {}'.format(args.generations))
     print('Duration per simulation: {}s'.format(args.duration))
     print('FPS: {}'.format(args.fps))
     print('Motion pattern duration: {}s'.format(args.pattern_duration))
     print('Number of cores utilized: {}'.format(args.cores))
     print('')
+
 
     motion_pattern_duration = args.pattern_duration
     fps = args.fps
@@ -59,9 +63,16 @@ def main():
 
     all_gene_pools.append(gene_pool)
 
+    # make simulation IDs running on as mani servers as there are cores selected
+    sim_ids = []
+    for simulation in range(cores):
+        sim_ids.append(make_sim_env('direct'))
+
+    print('Connecting to physics server {}'.format(sim_ids))
+
     for generation in range(generations):
         fitness = simulate_multicore(gene_pool, fps=fps,
-                                     duration_in_sec=duration_per_simulation_in_sec, num_cores=cores)
+                                     duration_in_sec=duration_per_simulation_in_sec, num_cores=cores, sim_ids=sim_ids)
 
         selected = evo.selection(np.argsort(fitness)[::-1])
         avg_dist = np.mean(fitness)

@@ -12,20 +12,18 @@ def reset_simulation(pop, sim_id):
     p.disconnect(physicsClientId=sim_id)
 
 
-def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=-1):
+def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim_ids=None):
     def worker(ind, p_gene_pool, fps, duration_in_sec, sim_id, qout):
         pop, sim_id = simulate_pop(p_gene_pool.tolist(), fps, duration_in_sec, direct=True, sim_id=sim_id)
         qout.put((ind, fitness(pop, sim_id)))
         reset_simulation(pop, sim_id)
 
-    if num_cores == -1:
-        num_cores = mp.cpu_count()
-
-    sim_ids = []
-    for simulation in range(num_cores):
-        sim_ids.append(make_sim_env('direct'))
-
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
+
+    if sim_ids is None:
+        sim_ids = []
+        for simulation in range(num_cores):
+            sim_ids.append(make_sim_env('direct'))
 
     qout = mp.Queue()
     processes = [mp.Process(target=worker, args=(ind, data_in[0], fps, duration_in_sec, data_in[1], qout))
