@@ -7,26 +7,29 @@ from matplotlib import cm
 import multiprocessing as mp
 
 
-def reset_simulation(pop):
-    [p.removeBody(ind) for ind in pop]
-    p.resetSimulation()
-    p.disconnect()
+def reset_simulation(pop, sim_id):
+    p.resetSimulation(physicsClientId=sim_id)
+    p.disconnect(physicsClientId=sim_id)
 
 
 def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=-1):
-    def worker(ind, p_gene_pool, fps, duration_in_sec, qout):
-        pop, sim_id = simulate_pop(p_gene_pool.tolist(), fps, duration_in_sec, direct=True)
-        qout.put((ind, fitness(pop)))
-        reset_simulation(pop)
+    def worker(ind, p_gene_pool, fps, duration_in_sec, sim_id, qout):
+        pop, sim_id = simulate_pop(p_gene_pool.tolist(), fps, duration_in_sec, direct=True, sim_id=sim_id)
+        qout.put((ind, fitness(pop, sim_id)))
+        reset_simulation(pop, sim_id)
 
     if num_cores == -1:
         num_cores = mp.cpu_count()
 
+    sim_ids = []
+    for simulation in range(num_cores):
+        sim_ids.append(make_sim_env('direct'))
+
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
 
     qout = mp.Queue()
-    processes = [mp.Process(target=worker, args=(ind, data_in, fps, duration_in_sec, qout))
-                 for ind, data_in in enumerate(split_gene_pool)]
+    processes = [mp.Process(target=worker, args=(ind, data_in[0], fps, duration_in_sec, data_in[1], qout))
+                 for ind, data_in in enumerate(zip(split_gene_pool, sim_ids))]
 
     for process in processes:
         process.start()
@@ -50,8 +53,8 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, sim_id=No
         else:
             sim_id = make_sim_env('gui')
 
-    pop = [_genome2simulation(genome) for genome in gene_pool]
-    _disable_collision(pop)
+    pop = [_genome2simulation(sim_id, genome) for genome in gene_pool]
+    _disable_collision(sim_id, pop)
 
     # simulate
     duration_steps = fps * duration_in_sec
@@ -60,9 +63,9 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, sim_id=No
 
     step = 0
     while p.isConnected(sim_id) and step < duration_steps:
-        p.stepSimulation()
+        p.stepSimulation(physicsClientId=sim_id)
         for indiv, genome in zip(pop, gene_pool):
-            _move_individual(indiv, genome, step)
+            _move_individual(indiv, genome, step, sim_id)
         if not direct:
             time.sleep(1. / fps)
         step += 1
@@ -76,8 +79,8 @@ def make_sim_env(gui_or_direct):
     else:
         sim_id = p.connect(p.DIRECT)
 
-    p.setGravity(0, 0, -9.81)
-    p.createMultiBody(0, p.createCollisionShape(p.GEOM_PLANE))
+    p.setGravity(0, 0, -9.81, physicsClientId=sim_id)
+    p.createMultiBody(0, p.createCollisionShape(p.GEOM_PLANE, physicsClientId=sim_id), physicsClientId=sim_id)
     return sim_id
 
 
@@ -106,7 +109,7 @@ def _get_random_color(colormap='viridis'):
     return c_map[np.random.random_integers(0, 254, 1)].tolist()[0]
 
 
-def _genome2multi_body_data(genome=({}, {})):
+def _genome2multi_body_data(sim_id, genome=({}, {})):
     if not bool(genome[0]):
         genome = _make_random_genome()
 
@@ -116,17 +119,18 @@ def _genome2multi_body_data(genome=({}, {})):
     sphere_color = [sphere_color * 0.5 for sphere_color in box_color[:-1]] + [1]
     # generate visual/ collision shape ids for objects with 'new' sizes
     for limb in genome[0].keys():
-        col_box_ids[limb] = p.createCollisionShape(p.GEOM_BOX, halfExtents=genome[0][limb])
+        col_box_ids[limb] = p.createCollisionShape(p.GEOM_BOX, halfExtents=genome[0][limb], physicsClientId=sim_id)
         vis_box_ids[limb] = p.createVisualShape(p.GEOM_BOX, halfExtents=genome[0][limb],
-                                                rgbaColor=box_color)
+                                                rgbaColor=box_color, physicsClientId=sim_id)
 
     # for all spheres connected to the chest take z value of chest box as radius
     vis_sphere_id_chest = p.createVisualShape(p.GEOM_SPHERE, radius=genome[0]['chest'][2],
-                                              rgbaColor=sphere_color)
-    col_sphere_id_chest = p.createCollisionShape(p.GEOM_SPHERE, radius=genome[0]['chest'][2])
+                                              rgbaColor=sphere_color, physicsClientId=sim_id)
+    col_sphere_id_chest = p.createCollisionShape(p.GEOM_SPHERE, radius=genome[0]['chest'][2], physicsClientId=sim_id)
     # analog for hip
-    vis_sphere_id_hip = p.createVisualShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2], rgbaColor=sphere_color)
-    col_sphere_id_hip = p.createCollisionShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2])
+    vis_sphere_id_hip = p.createVisualShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2], rgbaColor=sphere_color,
+                                            physicsClientId=sim_id)
+    col_sphere_id_hip = p.createCollisionShape(p.GEOM_SPHERE, radius=genome[0]['hip'][2], physicsClientId=sim_id)
 
     # fill multi body parameter values
     mb = _make_mb_dict()
@@ -173,11 +177,11 @@ def _genome2multi_body_data(genome=({}, {})):
     return mb, col_sphere_id_chest, vis_sphere_id_chest
 
 
-def _genome2simulation(genome=({}, {})):
+def _genome2simulation(sim_id, genome=({}, {})):
     if not bool(genome[0]):
-        mb_data = _genome2multi_body_data()
+        mb_data = _genome2multi_body_data(sim_id)
     else:
-        mb_data = _genome2multi_body_data(genome)
+        mb_data = _genome2multi_body_data(sim_id, genome)
 
     mb = mb_data[0]
 
@@ -196,14 +200,15 @@ def _genome2simulation(genome=({}, {})):
                              linkParentIndices=mb['inds'],
                              linkJointTypes=mb['joint_types'],
                              linkJointAxis=mb['axis'],
-                             useMaximalCoordinates=False)
+                             useMaximalCoordinates=False,
+                             physicsClientId=sim_id)
 
 
-def _disable_collision(pop):
+def _disable_collision(sim_id, pop):
     for idx, individual in enumerate(pop[:-1]):  # from first to second last
         for other_individual in pop[idx + 1:]:  # from next (relative to above) to end
 
             # pair all link indices and disable collision (num of joints = num of links)
-            for joint in range(-1, p.getNumJoints(individual)):  # all joints to ...
-                for other_joint in range(-1, p.getNumJoints(other_individual)):  # ... all other joints
-                    p.setCollisionFilterPair(individual, other_individual, joint, other_joint, 0)
+            for joint in range(-1, p.getNumJoints(individual, physicsClientId=sim_id)):  # all joints to ...
+                for other_joint in range(-1, p.getNumJoints(other_individual, physicsClientId=sim_id)):  # ... all other joints
+                    p.setCollisionFilterPair(individual, other_individual, joint, other_joint, 0,physicsClientId=sim_id)

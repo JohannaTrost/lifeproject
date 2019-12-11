@@ -69,8 +69,8 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
     return gene_pool_out
 
 
-def fitness(pop):
-    return [get_dist(ind) for ind in pop]
+def fitness(pop, sim_id):
+    return [get_dist(ind, sim_id) for ind in pop]
 
 
 def selection(sorted_pop):
