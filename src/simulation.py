@@ -12,10 +12,10 @@ def reset_simulation(sim_id):
     p.disconnect(physicsClientId=sim_id)
 
 
-def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim_ids=None):
-    def worker(ind, p_gene_pool, fps, duration_in_sec, sim_id, qout):
-        pop, sim_id, _ = simulate_pop(p_gene_pool.tolist(), fps, duration_in_sec, direct=True, sim_id=sim_id)
-        qout.put((ind, fitness(pop, sim_id)))
+def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim_ids=None):
+    def worker(ind, p_gene_pool, fps_sim, duration, sim_id, q):
+        pop, sim_id, _ = simulate_pop(p_gene_pool.tolist(), fps_sim, duration, direct=True, sim_id=sim_id)
+        q.put((ind, fitness(pop, sim_id)))
         reset_simulation(sim_id)
 
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
@@ -35,14 +35,15 @@ def simulate_multicore(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim_
     for process in processes:
         process.join()
 
-    unsorted_pop = [qout.get() for process in processes]
+    unsorted_pop = [qout.get() for _ in processes]
     sorted_pop = [t[1] for t in sorted(unsorted_pop)]
 
     fitness_all = []
     for sub_pop in sorted_pop:
-        fitness_all +=sub_pop
+        fitness_all += sub_pop
 
     return fitness_all
+
 
 def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_individuals=False, sim_id=None):
     if sim_id is None:
@@ -80,7 +81,6 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_ind
 
 
 def make_sim_env(gui_or_direct):
-
     if gui_or_direct.lower() == 'gui':
         sim_id = p.connect(p.GUI)
     else:
@@ -217,5 +217,7 @@ def _disable_collision(sim_id, pop):
 
             # pair all link indices and disable collision (num of joints = num of links)
             for joint in range(-1, p.getNumJoints(individual, physicsClientId=sim_id)):  # all joints to ...
-                for other_joint in range(-1, p.getNumJoints(other_individual, physicsClientId=sim_id)):  # ... all other joints
-                    p.setCollisionFilterPair(individual, other_individual, joint, other_joint, 0,physicsClientId=sim_id)
+                for other_joint in range(-1, p.getNumJoints(other_individual,
+                                                            physicsClientId=sim_id)):  # ... all other joints
+                    p.setCollisionFilterPair(individual, other_individual, joint, other_joint, 0,
+                                             physicsClientId=sim_id)
