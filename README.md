@@ -13,7 +13,7 @@ Type `python simulate_evolution.py -h` obtain the output below for possible argu
 ```
 usage: simulate_evolution.py [-h] [--individuals INDIVIDUALS]
                              [--generations GENERATIONS] [--duration DURATION]
-                             [--fps FPS] [--pattern_duration PATTERN_DURATION]
+                             [--fps FPS] [--cores CORES]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -24,6 +24,7 @@ optional arguments:
   --duration DURATION, -d DURATION
                         duration of each simulation in seconds
   --fps FPS, -f FPS     frames per second
-  --pattern_duration PATTERN_DURATION, -pd PATTERN_DURATION
-                        duration of motion pattern in seconds
+  --cores CORES, -c CORES
+                        number of CPU cores (default=1) Set to -1 for all
+                        cores
   ```
