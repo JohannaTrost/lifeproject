@@ -53,7 +53,7 @@ def _make_limb_dict():
 def _move_individual(obj_id, genome, move_step, sim_id):
     limb_dict = _make_limb_dict()
     for key in limb_dict.keys():
-        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % genome[2]], sim_id)
+        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % len(genome[1][key])], sim_id)
 
 
 def _move_limb(obj_id, limb, target_pos, sim_id):
@@ -73,11 +73,30 @@ def _move_limb(obj_id, limb, target_pos, sim_id):
                             physicsClientId=sim_id)
 
 
-def _make_move_pattern(size_pattern, limb_dict):
+def _make_move_pattern(size_pattern, limb_dict, vary_pattern_length=True):
     move_dict = {}
+    if vary_pattern_length:
+        size_pattern = int(size_pattern * (1.5 - np.random.rand()))
+
     for key in limb_dict.keys():
         move_dict[key] = np.random.random(size_pattern) * 2 * np.pi - np.pi
     return move_dict
+
+
+def _interpolate_move_pattern(move_pattern, new_size):
+    if len(move_pattern) > new_size:
+        int_size = new_size * len(move_pattern)
+    else:
+        int_size = new_size
+
+    x = np.linspace(0, len(move_pattern) - 1, len(move_pattern))
+    new_x = np.linspace(0, len(move_pattern) - 1, int_size)
+    interpolated_move_pattern = np.interp(new_x, x, move_pattern)
+
+    if len(move_pattern) > new_size:
+        return interpolated_move_pattern[int(len(move_pattern) / 2)::len(move_pattern)]
+    else:
+        return interpolated_move_pattern
 
 
 def _make_size_dict():
@@ -90,5 +109,5 @@ def _make_size_dict():
             }
 
 
-def _make_random_genome(move_steps=240):
+def _make_random_genome(move_steps):
     return _make_size_dict(), _make_move_pattern(move_steps, _make_limb_dict()), move_steps
