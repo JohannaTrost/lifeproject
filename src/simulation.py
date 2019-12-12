@@ -1,5 +1,6 @@
 import pybullet as p
-from src.individual import _move_individual, _make_random_genome, _get_pos
+from src.individual import _move_individual, _make_random_genome, _get_pos, \
+    _compute_mass
 from src.evolution import fitness
 import time
 import numpy as np
@@ -66,7 +67,7 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_ind
         p.stepSimulation(physicsClientId=sim_id)
 
         for indiv, genome in zip(pop, gene_pool):
-            _move_individual(indiv, genome, step, sim_id)
+            _move_individual(indiv, genome, step, p.getNumJoints(indiv, physicsClientId=sim_id), sim_id)
             if track_individuals:
                 x, y = _get_pos(indiv, sim_id)
                 if indiv in ind_tracker.keys():
@@ -91,8 +92,17 @@ def make_sim_env(gui_or_direct):
     return sim_id
 
 
+def _get_start_height(genome):
+    height = 0
+    for key in genome[0].keys():
+        if (genome[0][key][2] * 2) > height:
+            height = genome[0][key][2] * 2
+    return height + 0.1
+
+
+
 def _make_mb_dict():
-    return {'link_masses': [1] * 16,
+    return {'link_masses': [],
             'link_col_shape_ids': [],
             'link_vis_shape_ids': [],
             'link_pos': [],
@@ -141,6 +151,20 @@ def _genome2multi_body_data(sim_id, genome=({}, {})):
 
     # fill multi body parameter values
     mb = _make_mb_dict()
+
+    mb['start_height'] = _get_start_height(genome)
+
+    mb['link_masses'] = [_compute_mass(genome[0]['chest']),
+                         _compute_mass(genome[0]['chest'][2]),
+                         _compute_mass(genome[0]['chest'][2]),
+                         _compute_mass(genome[0]['hip'])] + \
+                        [_compute_mass(genome[0]['chest'][2])] * 4 + \
+                        [_compute_mass(genome[0]['hip'][2])] * 4 + \
+                        [_compute_mass(genome[0]['left_hand']),
+                         _compute_mass(genome[0]['right_hand']),
+                         _compute_mass(genome[0]['left_foot']),
+                         _compute_mass(genome[0]['right_foot'])]
+
     mb['link_col_shape_ids'] = [col_box_ids['chest'],
                                 col_sphere_id_chest,
                                 col_sphere_id_chest,
@@ -192,10 +216,10 @@ def _genome2simulation(sim_id, genome=({}, {})):
 
     mb = mb_data[0]
 
-    return p.createMultiBody(1,
+    return p.createMultiBody(np.mean(mb['link_masses']),
                              mb_data[1],
                              mb_data[2],
-                             [0, 0, 2],
+                             [0, 0, mb['start_height']],
                              [0, 0, 0, 1],
                              linkMasses=mb['link_masses'],
                              linkCollisionShapeIndices=mb['link_col_shape_ids'],

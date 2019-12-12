@@ -102,7 +102,7 @@ def main():
     if show_best:
         # show best parent
         stats = st.load_stats()
-        best = int(stats[-1, -1])
+        best = int(stats[-1, -2])
         gene_pool = evo.load_gene_pool()
         pop, sim_id, tracker = simulate_pop([gene_pool[best]],
                                             fps=fps,
