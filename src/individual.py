@@ -57,7 +57,7 @@ def _move_limb(obj_id, limb, target_pos, num_joints, sim_id):
     box_size = p.getCollisionShapeData(obj_id, limb,
                                        physicsClientId=sim_id)[0][3]
 
-    if p.getCollisionShapeData(obj_id, limb)[0][2] == 2:
+    if p.getCollisionShapeData(obj_id, limb, physicsClientId=sim_id)[0][2] == 2:
         box_size = box_size[0]
 
     p.setJointMotorControl2(obj_id,
