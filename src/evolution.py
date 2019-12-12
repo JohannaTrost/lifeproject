@@ -56,8 +56,6 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
                         o = np.mean([len(chromosomes[0][gene]), len(chromosomes[1][gene])])
                         d = len(chromosomes[0][gene]) - len(chromosomes[1][gene])
                         move_steps = np.ceil(_randoms_between(_limit([o], [d])))
-                        if move_steps < 10:
-                            move_steps = 10
 
                         chromosomes[0][gene] = _interpolate_move_pattern(chromosomes[0][gene], move_steps)
                         chromosomes[1][gene] = _interpolate_move_pattern(chromosomes[1][gene], move_steps)

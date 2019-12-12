@@ -4,6 +4,7 @@ import src.stats as st
 import src.data2plot as data2plot
 import argparse
 import numpy as np
+import time
 from multiprocessing import cpu_count
 
 
@@ -69,6 +70,7 @@ def main():
     print('Connecting to physics server {}'.format(sim_ids))
 
     for generation in range(generations):
+        start = time.time()
         fitness = simulate_multi_core(gene_pool,
                                       fps=fps,
                                       duration_in_sec=duration_per_simulation_in_sec,
@@ -79,14 +81,15 @@ def main():
         selected = evo.selection(sorted_genome_ids)
         avg_dist = np.mean(fitness)
 
-        print('generation {} | avg distance {}'.format(generation, avg_dist))
-
         best = sorted_genome_ids[0]
         gene_pool = evo.crossing(selected, gene_pool)
 
         all_gene_pools.append(gene_pool)
         # collect data on population
         stats.append([generation, avg_dist, best, fitness[best]])
+
+        print('generation {} | avg distance {} | duration {}s'.format(generation, avg_dist,
+                                                                      round(time.time() - start)))
 
     st.save_stats(stats, filename='src/results/stats_{}gen_{}ind_{}dur_{}steps.pkl'.format(
         generations, individuals, duration_per_simulation_in_sec, move_steps))
