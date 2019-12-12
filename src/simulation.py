@@ -100,7 +100,6 @@ def _get_start_height(genome):
     return height + 0.1
 
 
-
 def _make_mb_dict():
     return {'link_masses': [],
             'link_col_shape_ids': [],
