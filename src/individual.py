@@ -83,7 +83,10 @@ def _make_move_pattern(size_pattern, limb_dict, vary_pattern_length=True):
     return move_dict
 
 
-def _interpolate_move_pattern(move_pattern, new_size):
+def _interpolate_move_pattern(move_pattern, new_size, min_size=10):
+    if new_size < min_size:
+        new_size = min_size
+
     if len(move_pattern) > new_size:
         int_size = new_size * len(move_pattern)
     else:
