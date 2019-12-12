@@ -67,7 +67,7 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_ind
         p.stepSimulation(physicsClientId=sim_id)
 
         for indiv, genome in zip(pop, gene_pool):
-            _move_individual(indiv, genome, step, p.getNumJoints(indiv, physicsClientId=sim_id), sim_id)
+            _move_individual(indiv, genome, step, sim_id)
             if track_individuals:
                 x, y = _get_pos(indiv, sim_id)
                 if indiv in ind_tracker.keys():

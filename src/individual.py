@@ -7,14 +7,12 @@ def get_dist(id_ind, sim_id):
     return (x ** 2 + y ** 2) ** 0.5
 
 
-def _compute_force(mass, num_joints, max_force=600):
+def _compute_force(mass, min_force=100, max_force=500):
     # assumes a standard mass of 1
-    # scales the force according to the box size, but caps at 600
-
-    scaled_mass = mass * max_force / (num_joints + 1) / 3
-
-    y = 1 / ((1 / max_force) + np.exp(-scaled_mass)) - 1 / max_force
-    return y
+    # scales the force sigmoid according to the box size.
+    # scales roughly around force = mass * 150 centering around mass = 2, f(mass) = 300
+    max_force = max_force - min_force
+    return 1 / (1 / max_force + np.exp(-mass * 3)) + min_force
 
 
 def _compute_mass(box_size, standard_volume=2.197):
@@ -23,7 +21,14 @@ def _compute_mass(box_size, standard_volume=2.197):
     # np.random.rand(3) / 2 + 0.4, which is the starting box size. Hence this
     # box size will have a volume of (0.5 / 2 + 0.4)**3 and thus a normalized
     # mass of (0.5 / 2 + 0.4)**3 / standard_volume = 1
-    if np.isscalar(box_size):  # sphere
+
+    # ensure format
+    if isinstance(box_size, list):
+        if len(box_size) == 1:
+            box_size = box_size[0]
+    box_size = np.asarray(box_size)
+
+    if np.prod(box_size.shape) < 2:  # sphere
         return 4 / 3 * np.pi * box_size**3 / standard_volume
     else:  # box
         if np.ndim(box_size) == 1:
@@ -45,13 +50,13 @@ def _make_limb_dict():
             'hip_y': 2, 'hip_x': 1}
 
 
-def _move_individual(obj_id, genome, move_step, num_joints, sim_id):
+def _move_individual(obj_id, genome, move_step, sim_id):
     limb_dict = _make_limb_dict()
     for key in limb_dict.keys():
-        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % genome[2]], num_joints, sim_id)
+        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % genome[2]], sim_id)
 
 
-def _move_limb(obj_id, limb, target_pos, num_joints, sim_id):
+def _move_limb(obj_id, limb, target_pos, sim_id):
     p.changeDynamics(obj_id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01], physicsClientId=sim_id)
 
     box_size = p.getCollisionShapeData(obj_id, limb,
@@ -64,7 +69,7 @@ def _move_limb(obj_id, limb, target_pos, num_joints, sim_id):
                             limb,
                             p.POSITION_CONTROL,
                             targetPosition=target_pos,
-                            force=_compute_force(_compute_mass(box_size), num_joints),
+                            force=_compute_force(_compute_mass(box_size)),
                             physicsClientId=sim_id)
 
 
