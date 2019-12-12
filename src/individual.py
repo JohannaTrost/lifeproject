@@ -9,7 +9,8 @@ def get_dist(id_ind, sim_id):
 
 def _compute_force(mass, min_force=100, max_force=500):
     # assumes a standard mass of 1
-    # scales the force according to the box size, but caps at 600
+    # scales the force sigmoid according to the box size.
+    # scales roughly around force = mass * 150 centering around mass = 2, f(mass) = 300
     max_force = max_force - min_force
     return 1 / (1 / max_force + np.exp(-mass * 3)) + min_force
 
