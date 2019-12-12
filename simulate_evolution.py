@@ -10,10 +10,7 @@ from multiprocessing import cpu_count
 
 def main():
     # defaults for running as script
-    motion_pattern_duration = 1
     fps = 240
-    move_steps = int(motion_pattern_duration * fps)
-
     duration_per_simulation_in_sec = 10
     generations = 10
     individuals = 10
@@ -28,8 +25,6 @@ def main():
                         help='duration of each simulation in seconds')
     parser.add_argument('--fps', '-f', default=240, type=int,
                         help='frames per second')
-    parser.add_argument('--pattern_duration', '-pd', default=1, type=int,
-                        help='duration of motion pattern in seconds')
     parser.add_argument('--cores', '-c', default=1, type=int,
                         help='number of CPU cores (default=1) Set to -1 for all cores')
     args = parser.parse_args()
@@ -41,13 +36,10 @@ def main():
     print('Generations: {}'.format(args.generations))
     print('Duration per simulation: {}s'.format(args.duration))
     print('FPS: {}'.format(args.fps))
-    print('Motion pattern duration: {}s'.format(args.pattern_duration))
     print('Number of cores utilized: {}'.format(args.cores))
     print('')
 
-    motion_pattern_duration = args.pattern_duration
     fps = args.fps
-    move_steps = int(motion_pattern_duration * fps)
 
     duration_per_simulation_in_sec = args.duration
     generations = args.generations
@@ -58,7 +50,7 @@ def main():
     stats = []
     all_gene_pools = []
 
-    gene_pool = evo.new_gene_pool('random', num_inds=individuals, move_steps=move_steps)  # filename to load precomputed
+    gene_pool = evo.new_gene_pool('random', num_inds=individuals)  # filename to load precomputed
 
     all_gene_pools.append(gene_pool)
 
@@ -91,14 +83,14 @@ def main():
         print('generation {} | avg distance {} | duration {}s'.format(generation, avg_dist,
                                                                       round(time.time() - start)))
 
-    st.save_stats(stats, filename='src/results/stats_{}gen_{}ind_{}dur_{}steps.pkl'.format(
-        generations, individuals, duration_per_simulation_in_sec, move_steps))
+    st.save_stats(stats, filename='src/results/stats_{}gen_{}ind_{}dur.pkl'.format(
+        generations, individuals, duration_per_simulation_in_sec))
     st.save_stats(stats)
 
     # below can cause large files
     evo.save_gene_pool(all_gene_pools,
-                       filename='src/results/all_gene_pools_{}gen_{}ind_{}dur_{}steps.pkl'.format(
-                           generations, individuals, duration_per_simulation_in_sec, move_steps))
+                       filename='src/results/all_gene_pools_{}gen_{}ind_{}dur.pkl'.format(
+                           generations, individuals, duration_per_simulation_in_sec))
 
     evo.save_gene_pool(gene_pool)
 

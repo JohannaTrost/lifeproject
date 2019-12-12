@@ -73,8 +73,9 @@ def _move_limb(obj_id, limb, target_pos, sim_id):
                             physicsClientId=sim_id)
 
 
-def _make_move_pattern(size_pattern, limb_dict, vary_pattern_length=True):
+def _make_move_pattern(limb_dict, vary_pattern_length=True):
     move_dict = {}
+    size_pattern = 240
     if vary_pattern_length:
         size_pattern = int(size_pattern * (1.5 - np.random.rand()))
 
@@ -112,5 +113,5 @@ def _make_size_dict():
             }
 
 
-def _make_random_genome(move_steps):
-    return _make_size_dict(), _make_move_pattern(move_steps, _make_limb_dict()), move_steps
+def _make_random_genome():
+    return _make_size_dict(), _make_move_pattern(_make_limb_dict())
