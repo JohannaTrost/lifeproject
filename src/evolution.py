@@ -17,12 +17,12 @@ def load_gene_pool(filename='src/results/latest_gene_pool.pkl'):
     return gene_pool
 
 
-def new_gene_pool(gene_pool, num_inds=10, move_steps=240):
+def new_gene_pool(gene_pool, num_inds=10):
     if not isinstance(gene_pool, str):
-        return _make_random_gene_pool(num_inds=num_inds, move_steps=move_steps)
+        return _make_random_gene_pool(num_inds=num_inds)
     if isinstance(gene_pool, str):
         if gene_pool.lower() == 'random':
-            return _make_random_gene_pool(num_inds=num_inds, move_steps=move_steps)
+            return _make_random_gene_pool(num_inds=num_inds)
         else:
             return load_gene_pool(gene_pool)
 
@@ -35,11 +35,10 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
     move_keys = _make_limb_dict().keys()
     # iterate over selected pairs
     for pair in pairs:
-        move_steps = np.ceil((gene_pool[pair[0]][-1] + gene_pool[pair[1]][-1]) / 2)
-        child = [{}, {}, move_steps]
+        child = [{}, {}]
 
         # make dummy genome for mutation
-        rand_child = _make_random_genome(move_steps)
+        rand_child = _make_random_genome()
 
         # assign probability for this genome to mutate
         child_mut_prob = np.random.rand()
@@ -138,9 +137,9 @@ def _randoms_between(limits):
     return rand_in_limits
 
 
-def _make_random_gene_pool(num_inds=10, move_steps=240):
+def _make_random_gene_pool(num_inds=10):
     gene_pool = []
     for ind in range(num_inds):
-        gene_pool.append(_make_random_genome(move_steps))
+        gene_pool.append(_make_random_genome())
 
     return gene_pool
