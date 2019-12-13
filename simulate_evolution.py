@@ -1,4 +1,4 @@
-from src.simulation import simulate_pop, simulate_multi_core, make_sim_env
+from src.simulation import simulate_pop, simulate_multi_core, make_sim_env, reset_simulation
 import src.evolution as evo
 import src.stats as st
 import src.data2plot as data2plot

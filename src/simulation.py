@@ -8,7 +8,8 @@ from matplotlib import cm
 import multiprocessing as mp
 
 
-def reset_simulation(sim_id):
+def reset_simulation(pop, sim_id):
+    [p.removeBody(ind, physicsClientId=sim_id) for ind in pop]
     p.resetSimulation(physicsClientId=sim_id)
     p.disconnect(physicsClientId=sim_id)
 
@@ -17,7 +18,7 @@ def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim
     def worker(ind, p_gene_pool, fps_sim, duration, sim_id, q):
         pop, sim_id, _ = simulate_pop(p_gene_pool.tolist(), fps_sim, duration, direct=True, sim_id=sim_id)
         q.put((ind, fitness(pop, sim_id)))
-        reset_simulation(sim_id)
+        reset_simulation(pop, sim_id)
 
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
 
