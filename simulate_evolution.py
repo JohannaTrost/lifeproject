@@ -12,28 +12,30 @@ from multiprocessing import cpu_count
 def main():
     # argument parser
     parser = argparse.ArgumentParser()
-    parser.add_argument('--individuals', '-i', default=10, type=int,
+    parser.add_argument('--individuals', '-i', default=40, type=int,
                         help='number of individuals - In case visualization mode was chosen, a random set of i '
-                             'individuals will be chosen')
-    parser.add_argument('--generations', '-g', default=10, type=int,
-                        help='number of generations')
+                             'individuals will be chosen (default=40)')
+    parser.add_argument('--generations', '-g', default=100, type=int,
+                        help='number of generations (default=100)')
     parser.add_argument('--duration', '-d', default=10, type=int,
-                        help='duration of each simulation in seconds')
+                        help='duration of each simulation in seconds (default=10)')
     parser.add_argument('--fps', '-f', default=240, type=int,
-                        help='frames per second')
+                        help='frames per second (default=240)')
     parser.add_argument('--save_gene_pool', '-s', default='False', type=str,
                         help='Save all gene pools per generation to new folder - '
                              'If not set only last generation will be saved')
-    parser.add_argument('--cores', '-c', default=1, type=int,
-                        help='number of CPU cores (default=1) Set to -1 for all cores')
+    parser.add_argument('--overwrite_latest', '-o', default='False', type=str,
+                        help='whether to overwrite the default files in the parent directory')
+    parser.add_argument('--cores', '-c', default=-1, type=int,
+                        help='number of CPU cores - Set to -1 for all cores (default=-1)')
     parser.add_argument('--visualize', '-v', default='False', type=str,
-                        help='visualize result specified')
+                        help='visualize result specified (default=False)')
     parser.add_argument('--stats', '-sf', default='', type=str,
                         help='evo stats file to use for visualization (default is latest file)')
     parser.add_argument('--gene_pool_file', '-gf', default='', type=str,
                         help='genome file to use for visualization (default is latest file)')
     parser.add_argument('--best_only', '-b', default='True', type=str,
-                        help='whether to show only the best or multiple individuals')
+                        help='whether to show only the best or multiple individuals (default=True)')
     args = parser.parse_args()
 
     if args.cores == -1:
@@ -45,6 +47,7 @@ def main():
     generations = args.generations
     individuals = args.individuals
     save_results = True if args.save_gene_pool.lower() in ['true', 'yes', '1', 'y', 't'] else False
+    overwrite_latest = True if args.overwrite_latest.lower() in ['true', 'yes', '1', 'y', 't'] else False
     cores = args.cores
     visualize = True if args.visualize.lower() in ['true', 'yes', '1', 'y', 't'] else False
 
@@ -61,7 +64,6 @@ def main():
             from datetime import datetime
 
             date_time = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
-            save_dir += 'src' + os.path.sep + 'results' + os.path.sep
             save_dir += 'all_gene_pools_{}gen_{}ind_{}dur_' + date_time + os.path.sep
             save_dir = save_dir.format(generations, individuals, duration_per_simulation_in_sec)
             if not os.path.isdir(save_dir):
@@ -118,7 +120,7 @@ def main():
         st.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
         evo.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generations - 1) + '.pkl')
 
-        if save_results:
+        if save_results and overwrite_latest:
             import shutil
             shutil.copyfile(save_dir + 'stats.csv', os.getcwd() + os.path.sep + 'stats.csv')
             shutil.copyfile(save_dir + 'gen_' + str(generations - 1) + '.pkl',
