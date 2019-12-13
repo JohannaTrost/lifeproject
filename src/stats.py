@@ -12,9 +12,9 @@ def avg_dist(pop, sim_id):
     return np.mean([get_dist(ind, sim_id) for ind in pop])
 
 
-def save_stats(stats, filename='src/results/results.csv'):
+def save_stats(stats, filename='stats.csv'):
     np.savetxt(filename, stats, delimiter=',')
 
 
-def load_stats(filename='src/results/results.csv'):
+def load_stats(filename='stats.csv'):
     return np.loadtxt(filename, delimiter=',')

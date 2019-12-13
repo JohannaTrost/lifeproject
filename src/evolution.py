@@ -4,13 +4,13 @@ import random
 import pickle
 
 
-def save_gene_pool(gene_pool, filename='src/results/gene_pool.pkl'):
+def save_gene_pool(gene_pool, filename='latest_gene_pool.pkl'):
     output = open(filename, 'wb')
     pickle.dump(gene_pool, output)
     output.close()
 
 
-def load_gene_pool(filename='src/results/gene_pool.pkl'):
+def load_gene_pool(filename='latest_gene_pool.pkl'):
     pkl_file = open(filename, 'rb')
     gene_pool = pickle.load(pkl_file)
     pkl_file.close()

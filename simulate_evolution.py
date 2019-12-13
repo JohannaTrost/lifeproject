@@ -32,8 +32,6 @@ def main():
                         help='evo stats file to use for visualization (default is latest file)')
     parser.add_argument('--gene_pool_file', '-gf', default='', type=str,
                         help='genome file to use for visualization (default is latest file)')
-    parser.add_argument('--generation', '-gen', default=-1, type=int,
-                        help='generation number to show - Set to -1 for last generation')
     parser.add_argument('--best_only', '-b', default='True', type=str,
                         help='whether to show only the best or multiple individuals')
     args = parser.parse_args()
@@ -52,24 +50,22 @@ def main():
 
     stats_file = args.stats
     gene_pool_file = args.gene_pool_file
-    generation_to_show = args.generation
     best_only = True if args.best_only.lower() in ['true', 'yes', '1', 'y', 't'] else False
 
     if not visualize:
 
         print('Starting evolution...')
+        save_dir = os.getcwd() + os.path.sep
 
         if save_results:
             from datetime import datetime
-            save_dir = os.getcwd()
+
             date_time = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
-            save_dir += os.path.sep + 'src' + os.path.sep + 'results' + os.path.sep
+            save_dir += 'src' + os.path.sep + 'results' + os.path.sep
             save_dir += 'all_gene_pools_{}gen_{}ind_{}dur_' + date_time + os.path.sep
             save_dir = save_dir.format(generations, individuals, duration_per_simulation_in_sec)
             if not os.path.isdir(save_dir):
                 os.mkdir(save_dir)
-        else:
-            save_dir = 'src' + os.path.sep + 'results' + os.path.sep
 
         print('Individuals: {}'.format(individuals))
         print('Generations: {}'.format(generations))
@@ -122,6 +118,12 @@ def main():
         st.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
         evo.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generations - 1) + '.pkl')
 
+        if save_results:
+            import shutil
+            shutil.copyfile(save_dir + 'stats.csv', os.getcwd() + os.path.sep + 'stats.csv')
+            shutil.copyfile(save_dir + 'gen_' + str(generations - 1) + '.pkl',
+                            os.getcwd() + os.path.sep + 'latest_gene_pool.pkl')
+
         print('done.')
         print('')
 
@@ -134,8 +136,10 @@ def main():
 
         # load gene pool file or use default
         if len(gene_pool_file) < 1:
+            generation_to_show = -1
             gene_pool = evo.load_gene_pool()
         else:
+            generation_to_show = int(os.path.basename(gene_pool_file).split('gen_')[-1].split('.pkl')[0])
             gene_pool = evo.load_gene_pool(gene_pool_file)
 
         # show only best individual, derived from stats
