@@ -1,4 +1,5 @@
-from src.individual import _make_random_genome, get_dist, _make_size_dict, _interpolate_move_pattern, _make_limb_dict
+from src.individual import _make_random_genome, get_dist, _make_size_dict, _interpolate_move_pattern, _make_limb_dict, \
+    _move_pattern_size
 import numpy as np
 import random
 import pickle
@@ -52,9 +53,14 @@ def crossing(pairs, gene_pool, max_move_pattern=1000, mutation_prob_ind=0.05, mu
 
                     # vary moving pattern length
                     if gene in move_keys:
-                        o = np.mean([len(chromosomes[0][gene]), len(chromosomes[1][gene])])
-                        d = len(chromosomes[0][gene]) - len(chromosomes[1][gene])
-                        move_steps = np.ceil(_randoms_between(_limit([o], [d])))
+
+                        if child_mut_prob < mutation_prob_ind and np.random.rand() < mutation_prob_gene \
+                                and np.random.rand() < mutation_prob_feature:
+                            move_steps = _move_pattern_size()
+                        else:
+                            o = np.mean([len(chromosomes[0][gene]), len(chromosomes[1][gene])])
+                            d = len(chromosomes[0][gene]) - len(chromosomes[1][gene])
+                            move_steps = int(np.round(_randoms_between(_limit([o], [d])))[0])
 
                         chromosomes[0][gene] = _interpolate_move_pattern(chromosomes[0][gene], move_steps,
                                                                          max_size=max_move_pattern)
