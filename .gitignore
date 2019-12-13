@@ -9,4 +9,4 @@
 *.user
 .idea/*
 /src/__pycache__/*
-/src/results/all_gene*
+all_gene_pools*
