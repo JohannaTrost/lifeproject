@@ -73,14 +73,17 @@ def _move_limb(obj_id, limb, target_pos, sim_id):
                             physicsClientId=sim_id)
 
 
-def _make_move_pattern(limb_dict, vary_pattern_length=True):
-    move_dict = {}
-    size_pattern = 240
+def _move_pattern_size(default=240, vary_pattern_length=True):
     if vary_pattern_length:
-        size_pattern = int(size_pattern * (1.5 - np.random.rand()))
+        return int(default * (1.5 - np.random.rand()))
+    else:
+        return default
 
+
+def _make_move_pattern(limb_dict):
+    move_dict = {}
     for key in limb_dict.keys():
-        move_dict[key] = np.random.random(size_pattern) * 2 * np.pi - np.pi
+        move_dict[key] = np.random.random(_move_pattern_size()) * 2 * np.pi - np.pi
     return move_dict
 
 
