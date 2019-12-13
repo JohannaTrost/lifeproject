@@ -5,6 +5,7 @@ import src.data2plot as data2plot
 import argparse
 import numpy as np
 import time
+import os
 from multiprocessing import cpu_count
 
 
@@ -20,13 +21,16 @@ def main():
                         help='duration of each simulation in seconds')
     parser.add_argument('--fps', '-f', default=240, type=int,
                         help='frames per second')
+    parser.add_argument('--save_gene_pool', '-s', default='False', type=str,
+                        help='Save all gene pools per generation to new folder - '
+                             'If not set only last generation will be saved')
     parser.add_argument('--cores', '-c', default=1, type=int,
                         help='number of CPU cores (default=1) Set to -1 for all cores')
     parser.add_argument('--visualize', '-v', default='False', type=str,
                         help='visualize result specified')
-    parser.add_argument('--stats', '-s', default='', type=str,
+    parser.add_argument('--stats', '-sf', default='', type=str,
                         help='evo stats file to use for visualization (default is latest file)')
-    parser.add_argument('--gene_pool_file', '-gp', default='', type=str,
+    parser.add_argument('--gene_pool_file', '-gf', default='', type=str,
                         help='genome file to use for visualization (default is latest file)')
     parser.add_argument('--generation', '-gen', default=-1, type=int,
                         help='generation number to show - Set to -1 for last generation')
@@ -42,6 +46,7 @@ def main():
     duration_per_simulation_in_sec = args.duration
     generations = args.generations
     individuals = args.individuals
+    save_results = True if args.save_gene_pool.lower() in ['true', 'yes', '1', 'y', 't'] else False
     cores = args.cores
     visualize = True if args.visualize.lower() in ['true', 'yes', '1', 'y', 't'] else False
 
@@ -53,19 +58,32 @@ def main():
     if not visualize:
 
         print('Starting evolution...')
-        print('Individuals: {}'.format(args.individuals))
-        print('Generations: {}'.format(args.generations))
-        print('Duration per simulation: {}s'.format(args.duration))
-        print('FPS: {}'.format(args.fps))
-        print('Number of cores utilized: {}'.format(args.cores))
+
+        if save_results:
+            from datetime import datetime
+            save_dir = os.getcwd()
+            date_time = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
+            save_dir += os.path.sep + 'src' + os.path.sep + 'results' + os.path.sep
+            save_dir += 'all_gene_pools_{}gen_{}ind_{}dur_' + date_time + os.path.sep
+            save_dir = save_dir.format(generations, individuals, duration_per_simulation_in_sec)
+            if not os.path.isdir(save_dir):
+                os.mkdir(save_dir)
+        else:
+            save_dir = 'src' + os.path.sep + 'results' + os.path.sep
+
+        print('Individuals: {}'.format(individuals))
+        print('Generations: {}'.format(generations))
+        print('Duration per simulation: {}s'.format(duration_per_simulation_in_sec))
+        print('FPS: {}'.format(fps))
+        print('Number of cores utilized: {}'.format(cores))
+        if save_results:
+            print(('saving output to ' + save_dir).format(generations, individuals, duration_per_simulation_in_sec))
         print('')
 
         stats = []
-        all_gene_pools = []
+        fitness_over_gen = []
 
         gene_pool = evo.new_gene_pool('random', num_inds=individuals)  # filename to load precomputed
-
-        all_gene_pools.append(gene_pool)
 
         # make simulation IDs running on as mani servers as there are cores selected
         sim_ids = []
@@ -87,25 +105,22 @@ def main():
             avg_dist = np.mean(fitness)
 
             best = sorted_genome_ids[0]
+
+            if save_results:
+                evo.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generation) + '.pkl')
+
             gene_pool = evo.crossing(selected, gene_pool)
 
-            all_gene_pools.append(gene_pool)
             # collect data on population
             stats.append([generation, avg_dist, best, fitness[best]])
+            fitness_over_gen.append(fitness + [generation])
 
             print('generation {} | avg distance {} | duration {}s'.format(generation, avg_dist,
                                                                           round(time.time() - start)))
 
-        st.save_stats(stats, filename='src/results/stats_{}gen_{}ind_{}dur.pkl'.format(
-            generations, individuals, duration_per_simulation_in_sec))
-        st.save_stats(stats)
-
-        # below can cause large files
-        evo.save_gene_pool(all_gene_pools,
-                           filename='src/results/all_gene_pools_{}gen_{}ind_{}dur.pkl'.format(
-                               generations, individuals, duration_per_simulation_in_sec))
-
-        evo.save_gene_pool(gene_pool)
+        st.save_stats(stats, filename=save_dir + 'stats.csv')
+        st.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
+        evo.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generations - 1) + '.pkl')
 
         print('done.')
         print('')
@@ -122,10 +137,6 @@ def main():
             gene_pool = evo.load_gene_pool()
         else:
             gene_pool = evo.load_gene_pool(gene_pool_file)
-
-        # check if multiple generations are in the file
-        if isinstance(gene_pool[0][0], tuple):
-            gene_pool = gene_pool[generation_to_show]
 
         # show only best individual, derived from stats
         if best_only:
