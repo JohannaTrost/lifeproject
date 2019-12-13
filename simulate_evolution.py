@@ -109,7 +109,7 @@ def main():
             if save_results:
                 evo.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generation) + '.pkl')
 
-            gene_pool = evo.crossing(selected, gene_pool)
+            gene_pool = evo.crossing(selected, gene_pool, max_move_pattern=int(fps * duration_per_simulation_in_sec))
 
             # collect data on population
             stats.append([generation, avg_dist, best, fitness[best]])

@@ -27,7 +27,7 @@ def new_gene_pool(gene_pool, num_inds=10):
             return load_gene_pool(gene_pool)
 
 
-def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
+def crossing(pairs, gene_pool, max_move_pattern=1000, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
              mutation_prob_feature=0.05):
 
     gene_pool_out = []
@@ -56,11 +56,14 @@ def crossing(pairs, gene_pool, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
                         d = len(chromosomes[0][gene]) - len(chromosomes[1][gene])
                         move_steps = np.ceil(_randoms_between(_limit([o], [d])))
 
-                        chromosomes[0][gene] = _interpolate_move_pattern(chromosomes[0][gene], move_steps)
-                        chromosomes[1][gene] = _interpolate_move_pattern(chromosomes[1][gene], move_steps)
+                        chromosomes[0][gene] = _interpolate_move_pattern(chromosomes[0][gene], move_steps,
+                                                                         max_size=max_move_pattern)
+                        chromosomes[1][gene] = _interpolate_move_pattern(chromosomes[1][gene], move_steps,
+                                                                         max_size=max_move_pattern)
 
                         # assure random child has same length
-                        rand_child[idx][gene] = _interpolate_move_pattern(rand_child[idx][gene], move_steps)
+                        rand_child[idx][gene] = _interpolate_move_pattern(rand_child[idx][gene], move_steps,
+                                                                          max_size=max_move_pattern)
 
                     # compute crossing function
                     o = np.mean([chromosomes[0][gene], chromosomes[1][gene]], axis=0)
