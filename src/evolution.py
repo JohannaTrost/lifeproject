@@ -1,36 +1,13 @@
-from src.individual import _make_random_genome, get_dist, _make_size_dict, _interpolate_move_pattern, _make_limb_dict, \
-    _move_pattern_size
+from src.individual import _make_random_genome, get_dist, _make_size_dict, \
+    _interpolate_move_pattern, _make_limb_dict, _move_pattern_size
 import numpy as np
 import random
-import pickle
 
 
-def save_gene_pool(gene_pool, filename='latest_gene_pool.pkl'):
-    output = open(filename, 'wb')
-    pickle.dump(gene_pool, output)
-    output.close()
-
-
-def load_gene_pool(filename='latest_gene_pool.pkl'):
-    pkl_file = open(filename, 'rb')
-    gene_pool = pickle.load(pkl_file)
-    pkl_file.close()
-    return gene_pool
-
-
-def new_gene_pool(gene_pool, num_inds=10):
-    if not isinstance(gene_pool, str):
-        return _make_random_gene_pool(num_inds=num_inds)
-    if isinstance(gene_pool, str):
-        if gene_pool.lower() == 'random':
-            return _make_random_gene_pool(num_inds=num_inds)
-        else:
-            return load_gene_pool(gene_pool)
-
-
-def crossing(pairs, gene_pool, max_move_pattern=1000, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
+def crossing(pairs, gene_pool, max_move_pattern, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
              mutation_prob_feature=0.05):
 
+    # perform crossing of parents including mutation of a certain probability
     gene_pool_out = []
     size_keys = _make_size_dict().keys()
     move_keys = _make_limb_dict().keys()
@@ -54,6 +31,7 @@ def crossing(pairs, gene_pool, max_move_pattern=1000, mutation_prob_ind=0.05, mu
                     # vary moving pattern length
                     if gene in move_keys:
 
+                        # mutation for move pattern size
                         if child_mut_prob < mutation_prob_ind and np.random.rand() < mutation_prob_gene \
                                 and np.random.rand() < mutation_prob_feature:
                             move_steps = _move_pattern_size()
@@ -90,10 +68,12 @@ def crossing(pairs, gene_pool, max_move_pattern=1000, mutation_prob_ind=0.05, mu
 
 
 def fitness(pop, sim_id):
+    # compute fitness as distance to origin
     return [get_dist(ind, sim_id) for ind in pop]
 
 
 def selection(sorted_pop):
+    # perform parent selection based on sorted (according to fitness) population
 
     # want to keep 50% of the pop
     num_survivors = int(0.5 * len(sorted_pop))
@@ -146,7 +126,8 @@ def _randoms_between(limits):
     return rand_in_limits
 
 
-def _make_random_gene_pool(num_inds=10):
+def _make_random_gene_pool(num_inds):
+    # create gene pool for specified number of individuals
     gene_pool = []
     for ind in range(num_inds):
         gene_pool.append(_make_random_genome())
