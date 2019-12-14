@@ -14,10 +14,11 @@ Type `python simulate_evolution.py -h` obtain the output below for possible argu
 usage: simulate_evolution.py [-h] [--individuals INDIVIDUALS]
                              [--generations GENERATIONS] [--duration DURATION]
                              [--fps FPS] [--save_gene_pool SAVE_GENE_POOL]
-                             [--overwrite_latest OVERWRITE_LATEST]
-                             [--cores CORES] [--visualize VISUALIZE]
-                             [--stats STATS] [--gene_pool_file GENE_POOL_FILE]
-                             [--best_only BEST_ONLY]
+                             [--overwrite OVERWRITE] [--cores CORES]
+                             [--visualize VISUALIZE]
+                             [--evolution_dir EVOLUTION_DIR]
+                             [--generation GENERATION] [--best_only BEST_ONLY]
+                             [--show_stats SHOW_STATS]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -33,23 +34,25 @@ optional arguments:
   --save_gene_pool SAVE_GENE_POOL, -s SAVE_GENE_POOL
                         Save all gene pools per generation to new folder - If
                         not set only last generation will be saved
-  --overwrite_latest OVERWRITE_LATEST, -o OVERWRITE_LATEST
-                        whether to overwrite the default files in the parent
-                        directory
+  --overwrite OVERWRITE, -o OVERWRITE
+                        overwrite data (default=False)
   --cores CORES, -c CORES
                         number of CPU cores - Set to -1 for all cores
                         (default=-1)
   --visualize VISUALIZE, -v VISUALIZE
                         visualize result specified (default=False)
-  --stats STATS, -sf STATS
-                        evo stats file to use for visualization (default is
-                        latest file)
-  --gene_pool_file GENE_POOL_FILE, -gf GENE_POOL_FILE
-                        genome file to use for visualization (default is
-                        latest file)
+  --evolution_dir EVOLUTION_DIR, -e EVOLUTION_DIR
+                        directory for evolution to show (default=example)
+  --generation GENERATION, -gen GENERATION
+                        generation selected for displaying - Set -1 for latest
+                        (default=-1)
   --best_only BEST_ONLY, -b BEST_ONLY
                         whether to show only the best or multiple individuals
                         (default=True)
+  --show_stats SHOW_STATS, -ss SHOW_STATS
+                        whether to show statistics on the evolution - If True
+                        only statistics and no rendered individuals are shown
+                        (default=False)
   ```
 
 Note that there are two different modes in which the script can be use: simulation and visualization mode. Within the simulation mode the evolution is simulated according to the specifications. The visualization mode can be used to readout the result of the evolution.

@@ -3,6 +3,7 @@ import numpy as np
 
 
 def get_dist(id_ind, sim_id):
+    # get distance to starting position ([0, 0])
     x, y = _get_pos(id_ind, sim_id)
     return (x ** 2 + y ** 2) ** 0.5
 
@@ -38,11 +39,13 @@ def _compute_mass(box_size, standard_volume=2.197):
 
 
 def _get_pos(id_ind, sim_id):
+    # get current position of 'head'
     x, y = p.getBasePositionAndOrientation(id_ind, physicsClientId=sim_id)[0][0:2]
     return x, y
 
 
 def _make_limb_dict():
+    # create controller dictionary translating each limb id into human readable format
     return {'left_arm_y': 10, 'right_arm_y': 13,
             'left_arm_z': 11, 'right_arm_z': 14,
             'left_leg_y': 4, 'right_leg_y': 7,
@@ -51,12 +54,14 @@ def _make_limb_dict():
 
 
 def _move_individual(obj_id, genome, move_step, sim_id):
+    # move each limb of the individual one step
     limb_dict = _make_limb_dict()
     for key in limb_dict.keys():
         _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % len(genome[1][key])], sim_id)
 
 
 def _move_limb(obj_id, limb, target_pos, sim_id):
+    # move specific limb motor to target position
     p.changeDynamics(obj_id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01], physicsClientId=sim_id)
 
     box_size = p.getCollisionShapeData(obj_id, limb,
@@ -74,6 +79,7 @@ def _move_limb(obj_id, limb, target_pos, sim_id):
 
 
 def _move_pattern_size(default=240, vary_pattern_length=True):
+    # compute size of movement pattern (jitter of ± 50%)
     if vary_pattern_length:
         return int(default * (1.5 - np.random.rand()))
     else:
@@ -81,6 +87,7 @@ def _move_pattern_size(default=240, vary_pattern_length=True):
 
 
 def _make_move_pattern(limb_dict):
+    # create random movement pattern
     move_dict = {}
     for key in limb_dict.keys():
         move_dict[key] = np.random.random(_move_pattern_size()) * 2 * np.pi - np.pi
@@ -88,6 +95,7 @@ def _make_move_pattern(limb_dict):
 
 
 def _interpolate_move_pattern(move_pattern, new_size, min_size=10, max_size=1000):
+    # interpolate movement pattern to fit a certain size by linear interpolation
     if new_size < min_size:
         new_size = min_size
     elif new_size > max_size:
@@ -109,6 +117,7 @@ def _interpolate_move_pattern(move_pattern, new_size, min_size=10, max_size=1000
 
 
 def _make_size_dict():
+    # make random sizes for each box
     return {'left_hand': np.random.rand(3) / 2 + 0.4,
             'right_hand': np.random.rand(3) / 2 + 0.4,
             'left_foot': np.random.rand(3) / 2 + 0.4,
@@ -119,4 +128,5 @@ def _make_size_dict():
 
 
 def _make_random_genome():
+    # create random genome by creating chromosomes for box size and movement
     return _make_size_dict(), _make_move_pattern(_make_limb_dict())

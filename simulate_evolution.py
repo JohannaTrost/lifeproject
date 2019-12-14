@@ -1,12 +1,10 @@
-from src.simulation import simulate_pop, simulate_multi_core, make_sim_env, reset_simulation
+from src.simulation import simulate_multi_core, connect_to_servers
 import src.evolution as evo
-import src.stats as st
-import src.data2plot as data2plot
+import src.visualize as vis
+import src.IO as IO
 import argparse
 import numpy as np
 import time
-import os
-from multiprocessing import cpu_count
 
 
 def main():
@@ -24,146 +22,114 @@ def main():
     parser.add_argument('--save_gene_pool', '-s', default='False', type=str,
                         help='Save all gene pools per generation to new folder - '
                              'If not set only last generation will be saved')
-    parser.add_argument('--overwrite_latest', '-o', default='False', type=str,
-                        help='whether to overwrite the default files in the parent directory')
+    parser.add_argument('--overwrite', '-o', default='False', type=str,
+                        help='overwrite data (default=False)')
     parser.add_argument('--cores', '-c', default=-1, type=int,
                         help='number of CPU cores - Set to -1 for all cores (default=-1)')
+
     parser.add_argument('--visualize', '-v', default='False', type=str,
                         help='visualize result specified (default=False)')
-    parser.add_argument('--stats', '-sf', default='', type=str,
-                        help='evo stats file to use for visualization (default is latest file)')
-    parser.add_argument('--gene_pool_file', '-gf', default='', type=str,
-                        help='genome file to use for visualization (default is latest file)')
+    parser.add_argument('--evolution_dir', '-e', default='', type=str,
+                        help='directory for evolution to show (default=example)')
+    parser.add_argument('--generation', '-gen', default=-1, type=int,
+                        help='generation selected for displaying - Set -1 for latest (default=-1)')
     parser.add_argument('--best_only', '-b', default='True', type=str,
                         help='whether to show only the best or multiple individuals (default=True)')
-    args = parser.parse_args()
+    parser.add_argument('--show_stats', '-ss', default='False', type=str,
+                        help='whether to show statistics on the evolution - '
+                             'If True only statistics and no rendered individuals are shown (default=False)')
 
-    if args.cores == -1:
-        args.cores = cpu_count()
+    # convert certain arguments
+    args = IO.convert_some_args(parser.parse_args())
 
-    fps = args.fps
+    # initialize simulation
+    gene_pool, stats, fitness_over_gen, tracker_over_gen, save_dir = IO.get_from_config(args)
 
-    duration_per_simulation_in_sec = args.duration
-    generations = args.generations
-    individuals = args.individuals
-    save_results = True if args.save_gene_pool.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    overwrite_latest = True if args.overwrite_latest.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    cores = args.cores
-    visualize = True if args.visualize.lower() in ['true', 'yes', '1', 'y', 't'] else False
+    if not args.visualize:
 
-    stats_file = args.stats
-    gene_pool_file = args.gene_pool_file
-    best_only = True if args.best_only.lower() in ['true', 'yes', '1', 'y', 't'] else False
-
-    if not visualize:
-
+        # print summary
         print('Starting evolution...')
-        save_dir = os.getcwd() + os.path.sep
+        save_dir = IO.return_parent_path(args)
 
-        if save_results:
-            from datetime import datetime
-
-            date_time = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
-            save_dir += 'all_gene_pools_{}gen_{}ind_{}dur_' + date_time + os.path.sep
-            save_dir = save_dir.format(generations, individuals, duration_per_simulation_in_sec)
-            if not os.path.isdir(save_dir):
-                os.mkdir(save_dir)
-
-        print('Individuals: {}'.format(individuals))
-        print('Generations: {}'.format(generations))
-        print('Duration per simulation: {}s'.format(duration_per_simulation_in_sec))
-        print('FPS: {}'.format(fps))
-        print('Number of cores utilized: {}'.format(cores))
-        if save_results:
-            print(('saving output to ' + save_dir).format(generations, individuals, duration_per_simulation_in_sec))
+        print('Individuals: {}'.format(args.individuals))
+        print('Generations: {}'.format(args.generations))
+        print('Duration per simulation: {}s'.format(args.duration))
+        print('FPS: {}'.format(args.fps))
+        print('Number of cores utilized: {}'.format(args.cores))
+        print('saving output to ' + save_dir)
         print('')
 
-        stats = []
-        fitness_over_gen = []
-
-        gene_pool = evo.new_gene_pool('random', num_inds=individuals)  # filename to load precomputed
-
         # make simulation IDs running on as mani servers as there are cores selected
-        sim_ids = []
-        for simulation in range(cores):
-            sim_ids.append(make_sim_env('direct'))
+        sim_ids = connect_to_servers(args.cores)
 
         print('Connecting to physics server {}'.format(sim_ids))
 
-        for generation in range(generations):
+        # iterate over generations
+        for generation in range(args.generation, args.generations + args.generation):
             start = time.time()
-            fitness = simulate_multi_core(gene_pool,
-                                          fps=fps,
-                                          duration_in_sec=duration_per_simulation_in_sec,
-                                          num_cores=cores,
-                                          sim_ids=sim_ids)
 
+            # obtain fitness for each individual in current generation
+            fitness, tracker = simulate_multi_core(gene_pool, fps=args.fps,
+                                                   duration_in_sec=args.duration,
+                                                   num_cores=args.cores, sim_ids=sim_ids)
+
+            # sort fitness descending
             sorted_genome_ids = np.argsort(fitness)[::-1]
+
+            # select best performers and transform into parent pairs
             selected = evo.selection(sorted_genome_ids)
-            avg_dist = np.mean(fitness)
-
-            best = sorted_genome_ids[0]
-
-            if save_results:
-                evo.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generation) + '.pkl')
-
-            gene_pool = evo.crossing(selected, gene_pool, max_move_pattern=int(fps * duration_per_simulation_in_sec))
 
             # collect data on population
+            avg_dist = np.mean(fitness)
+            best = sorted_genome_ids[0]
+
             stats.append([generation, avg_dist, best, fitness[best]])
             fitness_over_gen.append(fitness + [generation])
+            tracker_over_gen.append(tracker)
 
+            # if desired save state of current gene pool
+            if args.save_gene_pool:
+                IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generation) + '.pkl')
+
+                # to make sure files are present even if the evolution was interrupted
+                IO.save_stats(stats, filename=save_dir + 'stats.csv')
+                IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
+                IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
+
+            # create new gene poll by pairing selected parents
+            gene_pool = evo.crossing(selected, gene_pool, max_move_pattern=int(args.fps * args.duration))
+
+            # print status
             print('generation {} | avg distance {} | duration {}s'.format(generation, avg_dist,
                                                                           round(time.time() - start)))
 
-        st.save_stats(stats, filename=save_dir + 'stats.csv')
-        st.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
-        evo.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generations - 1) + '.pkl')
-
-        if save_results and overwrite_latest:
-            import shutil
-            shutil.copyfile(save_dir + 'stats.csv', os.getcwd() + os.path.sep + 'stats.csv')
-            shutil.copyfile(save_dir + 'gen_' + str(generations - 1) + '.pkl',
-                            os.getcwd() + os.path.sep + 'latest_gene_pool.pkl')
+        # save statistics, fitness and position data and gene pool
+        IO.save_stats(stats, filename=save_dir + 'stats.csv')
+        IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
+        IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
+        IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(args.generations + args.generation - 1) + '.pkl')
 
         print('done.')
         print('')
 
     else:
-        # load stats file or use default
-        if len(stats_file) < 1:
-            stats = st.load_stats()
+
+        if not args.show_stats:
+            # show desired simulation
+            pop, sim_id, tracker = vis.show_individual(gene_pool, args.duration)
+
+            # show tracked paths
+            vis.show_path(tracker)
+
         else:
-            stats = st.load_stats(stats_file)
+            # show stats
+            vis.show_stats(IO.load_stats(args.stats))
 
-        # load gene pool file or use default
-        if len(gene_pool_file) < 1:
-            generation_to_show = -1
-            gene_pool = evo.load_gene_pool()
-        else:
-            generation_to_show = int(os.path.basename(gene_pool_file).split('gen_')[-1].split('.pkl')[0])
-            gene_pool = evo.load_gene_pool(gene_pool_file)
+            # show tracked paths
+            tracked_paths = IO.load_tracker(args.tracker)
+            vis.show_path(tracked_paths[args.generation], title='paths of gen {}'.format(args.generation))
 
-        # show only best individual, derived from stats
-        if best_only:
-            best = int(stats[generation_to_show, -2])
-            gene_pool = [gene_pool[best]]
-        else:
-            ind_sel = np.random.random_integers(0, len(gene_pool) - 1, individuals)
-            gene_pool = [gene_pool[ind] for ind in ind_sel]
-
-        # show desired simulation
-        pop, sim_id, tracker = simulate_pop(gene_pool,
-                                            fps=240,
-                                            duration_in_sec=duration_per_simulation_in_sec,
-                                            track_individuals=True,
-                                            direct=False)
-
-        # show stats
-        data2plot.show_stats(stats)
-
-        # show tracked paths
-        data2plot.show_path(tracker)
+            vis.show_multiple_gen_paths(tracked_paths)
 
 
 if __name__ == '__main__':

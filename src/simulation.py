@@ -8,16 +8,27 @@ from matplotlib import cm
 import multiprocessing as mp
 
 
+def connect_to_servers(cores):
+    # connect to multiple servers according to the amount of CPU cores requested
+    sim_ids = []
+    for simulation in range(cores):
+        sim_ids.append(_make_sim_env('direct'))
+    return sim_ids
+
+
 def reset_simulation(pop, sim_id):
+    # remove all bodies and reset simulation
     [p.removeBody(ind, physicsClientId=sim_id) for ind in pop]
     p.resetSimulation(physicsClientId=sim_id)
     p.disconnect(physicsClientId=sim_id)
 
 
 def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim_ids=None):
+    # perform simulation using multiprocessing library (on multiple CPU cores) by splitting the amount of individuals
+    # into as many chunks as CPU cores were requested
     def worker(ind, p_gene_pool, fps_sim, duration, sim_id, q):
-        pop, sim_id, _ = simulate_pop(p_gene_pool.tolist(), fps_sim, duration, direct=True, sim_id=sim_id)
-        q.put((ind, fitness(pop, sim_id)))
+        pop, sim_id, tracker = simulate_pop(p_gene_pool.tolist(), fps_sim, duration, direct=True, sim_id=sim_id)
+        q.put((ind, fitness(pop, sim_id), tracker))
         reset_simulation(pop, sim_id)
 
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
@@ -25,34 +36,44 @@ def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim
     if sim_ids is None:
         sim_ids = []
         for simulation in range(num_cores):
-            sim_ids.append(make_sim_env('direct'))
+            sim_ids.append(_make_sim_env('direct'))
 
-    qout = mp.Queue()
+    qout = mp.Queue(maxsize=-1)
     processes = [mp.Process(target=worker, args=(ind, data_in[0], fps, duration_in_sec, data_in[1], qout))
                  for ind, data_in in enumerate(zip(split_gene_pool, sim_ids))]
 
     for process in processes:
         process.start()
 
-    for process in processes:
-        process.join()
+    unsorted_result = []
+    while any(process.is_alive() for process in processes):
+        while not qout.empty():
+            unsorted_result.append(qout.get(False))
 
-    unsorted_pop = [qout.get() for _ in processes]
-    sorted_pop = [t[1] for t in sorted(unsorted_pop)]
+    sorted_fitness = [t[1] for t in sorted(unsorted_result)]
+    sorted_tracker = [t[2] for t in sorted(unsorted_result)]
 
     fitness_all = []
-    for sub_pop in sorted_pop:
+    for sub_pop in sorted_fitness:
         fitness_all += sub_pop
 
-    return fitness_all
+    tracker_all = {}
+    counter = 0
+    for sub_pop in sorted_tracker:
+        for key in sub_pop.keys():
+            tracker_all[counter] = sub_pop[key]
+            counter += 1
+
+    return fitness_all, tracker_all
 
 
-def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_individuals=False, sim_id=None):
+def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_individuals=True, sim_id=None):
+    # simulate all individuals of one generation
     if sim_id is None:
         if direct:
-            sim_id = make_sim_env('direct')
+            sim_id = _make_sim_env('direct')
         else:
-            sim_id = make_sim_env('gui')
+            sim_id = _make_sim_env('gui')
 
     pop = [_genome2simulation(sim_id, genome) for genome in gene_pool]
     _disable_collision(sim_id, pop)
@@ -82,7 +103,8 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_ind
     return pop, sim_id, ind_tracker
 
 
-def make_sim_env(gui_or_direct):
+def _make_sim_env(gui_or_direct):
+    # make simulation environment
     if gui_or_direct.lower() == 'gui':
         sim_id = p.connect(p.GUI)
     else:
@@ -94,6 +116,7 @@ def make_sim_env(gui_or_direct):
 
 
 def _get_start_height(genome):
+    # get z coordinate for each body part
     height = 0
     for key in genome[0].keys():
         if (genome[0][key][2] * 2) > height:
@@ -102,6 +125,7 @@ def _get_start_height(genome):
 
 
 def _make_mb_dict():
+    # setup base dictionary for multi body
     return {'link_masses': [],
             'link_col_shape_ids': [],
             'link_vis_shape_ids': [],
@@ -127,6 +151,7 @@ def _get_random_color(colormap='viridis'):
 
 
 def _genome2multi_body_data(sim_id, genome=({}, {})):
+    # create multi body data from genome
     if not bool(genome[0]):
         genome = _make_random_genome()
 
@@ -209,6 +234,7 @@ def _genome2multi_body_data(sim_id, genome=({}, {})):
 
 
 def _genome2simulation(sim_id, genome=({}, {})):
+    # transform genome to simulatable multi body (or create new random genome and transform)
     if not bool(genome[0]):
         mb_data = _genome2multi_body_data(sim_id)
     else:
@@ -236,6 +262,7 @@ def _genome2simulation(sim_id, genome=({}, {})):
 
 
 def _disable_collision(sim_id, pop):
+    # disable collision between each joint in individual i and each joint in individual j
     for idx, individual in enumerate(pop[:-1]):  # from first to second last
         for other_individual in pop[idx + 1:]:  # from next (relative to above) to end
 
