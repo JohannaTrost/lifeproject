@@ -32,13 +32,17 @@ def convert_some_args(args):
         args.gene_pool_file = None
         args.generation = 0
     else:
+
+        # if desired find last generation
         if args.generation == -1:
+            # if no generation file present initialize new evolution
             try:
                 args.generation = find_latest_gen(parent_dir)
                 args.gene_pool_file = parent_dir + 'gen_' + str(args.generation) + '.pkl'
             except IndexError:
                 args.gene_pool_file = None
                 args.generation = 0
+        # otherwise take generation specified
         else:
             args.gene_pool_file = parent_dir + 'gen_' + str(args.generation) + '.pkl'
 

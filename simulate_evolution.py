@@ -79,6 +79,14 @@ def main():
             # select best performers and transform into parent pairs
             selected = evo.selection(sorted_genome_ids)
 
+            # collect data on population
+            avg_dist = np.mean(fitness)
+            best = sorted_genome_ids[0]
+
+            stats.append([generation, avg_dist, best, fitness[best]])
+            fitness_over_gen.append(fitness + [generation])
+            tracker_over_gen.append(tracker)
+
             # if desired save state of current gene pool
             if args.save_gene_pool:
                 IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generation) + '.pkl')
@@ -90,14 +98,6 @@ def main():
 
             # create new gene poll by pairing selected parents
             gene_pool = evo.crossing(selected, gene_pool, max_move_pattern=int(args.fps * args.duration))
-
-            # collect data on population
-            avg_dist = np.mean(fitness)
-            best = sorted_genome_ids[0]
-
-            stats.append([generation, avg_dist, best, fitness[best]])
-            fitness_over_gen.append(fitness + [generation])
-            tracker_over_gen.append(tracker)
 
             # print status
             print('generation {} | avg distance {} | duration {}s'.format(generation, avg_dist,
