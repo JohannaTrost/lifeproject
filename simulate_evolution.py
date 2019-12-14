@@ -19,6 +19,10 @@ def main():
                         help='duration of each simulation in seconds (default=10)')
     parser.add_argument('--fps', '-f', default=240, type=int,
                         help='frames per second (default=240)')
+    parser.add_argument('--evolution_dir', '-e', default='', type=str,
+                        help='directory for evolution to show (default=example)')
+    parser.add_argument('--tracking', '-t', default='True', type=str,
+                        help='whether the path of each individual is recorded (default=True)')
     parser.add_argument('--save_gene_pool', '-s', default='False', type=str,
                         help='Save all gene pools per generation to new folder - '
                              'If not set only last generation will be saved')
@@ -29,8 +33,6 @@ def main():
 
     parser.add_argument('--visualize', '-v', default='False', type=str,
                         help='visualize result specified (default=False)')
-    parser.add_argument('--evolution_dir', '-e', default='', type=str,
-                        help='directory for evolution to show (default=example)')
     parser.add_argument('--generation', '-gen', default=-1, type=int,
                         help='generation selected for displaying - Set -1 for latest (default=-1)')
     parser.add_argument('--best_only', '-b', default='True', type=str,
@@ -71,6 +73,7 @@ def main():
             # obtain fitness for each individual in current generation
             fitness, tracker = simulate_multi_core(gene_pool, fps=args.fps,
                                                    duration_in_sec=args.duration,
+                                                   track_individuals=True,
                                                    num_cores=args.cores, sim_ids=sim_ids)
 
             # sort fitness descending
@@ -85,7 +88,8 @@ def main():
 
             stats.append([generation, avg_dist, best, fitness[best]])
             fitness_over_gen.append(fitness + [generation])
-            tracker_over_gen.append(tracker)
+            if args.tracking:
+                tracker_over_gen.append(tracker)
 
             # if desired save state of current gene pool
             if args.save_gene_pool:
@@ -94,7 +98,8 @@ def main():
                 # to make sure files are present even if the evolution was interrupted
                 IO.save_stats(stats, filename=save_dir + 'stats.csv')
                 IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
-                IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
+                if args.tracking:
+                    IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
 
             # create new gene poll by pairing selected parents
             gene_pool = evo.crossing(selected, gene_pool, max_move_pattern=int(args.fps * args.duration))
@@ -106,7 +111,8 @@ def main():
         # save statistics, fitness and position data and gene pool
         IO.save_stats(stats, filename=save_dir + 'stats.csv')
         IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
-        IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
+        if args.tracking:
+            IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
         IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(args.generations + args.generation - 1) + '.pkl')
 
         print('done.')
@@ -124,12 +130,12 @@ def main():
         else:
             # show stats
             vis.show_stats(IO.load_stats(args.stats))
+            if args.tracking:
+                # show tracked paths
+                tracked_paths = IO.load_tracker(args.tracker)
+                vis.show_path(tracked_paths[args.generation], title='paths of gen {}'.format(args.generation))
 
-            # show tracked paths
-            tracked_paths = IO.load_tracker(args.tracker)
-            vis.show_path(tracked_paths[args.generation], title='paths of gen {}'.format(args.generation))
-
-            vis.show_multiple_gen_paths(tracked_paths)
+                vis.show_multiple_gen_paths(tracked_paths)
 
 
 if __name__ == '__main__':

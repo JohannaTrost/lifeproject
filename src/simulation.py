@@ -23,11 +23,12 @@ def reset_simulation(pop, sim_id):
     p.disconnect(physicsClientId=sim_id)
 
 
-def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, num_cores=1, sim_ids=None):
+def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, track_individuals=True, num_cores=1, sim_ids=None):
     # perform simulation using multiprocessing library (on multiple CPU cores) by splitting the amount of individuals
     # into as many chunks as CPU cores were requested
     def worker(ind, p_gene_pool, fps_sim, duration, sim_id, q):
-        pop, sim_id, tracker = simulate_pop(p_gene_pool.tolist(), fps_sim, duration, direct=True, sim_id=sim_id)
+        pop, sim_id, tracker = simulate_pop(p_gene_pool.tolist(), fps_sim, duration,
+                                            track_individuals=track_individuals, direct=True, sim_id=sim_id)
         q.put((ind, fitness(pop, sim_id), tracker))
         reset_simulation(pop, sim_id)
 
