@@ -129,13 +129,14 @@ def main():
 
         else:
             # show stats
-            vis.show_stats(IO.load_stats(args.stats))
             if args.tracking:
                 # show tracked paths
                 tracked_paths = IO.load_tracker(args.tracker)
                 vis.show_path(tracked_paths[args.generation], title='paths of gen {}'.format(args.generation))
 
                 vis.show_multiple_gen_paths(tracked_paths)
+                
+            vis.show_stats(IO.load_stats(args.stats))
 
 
 if __name__ == '__main__':
