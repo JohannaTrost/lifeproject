@@ -19,6 +19,7 @@ def convert_some_args(args):
     args.visualize = True if args.visualize.lower() in ['true', 'yes', '1', 'y', 't'] else False
     args.best_only = True if args.best_only.lower() in ['true', 'yes', '1', 'y', 't'] else False
     args.overwrite = True if args.overwrite.lower() in ['true', 'yes', '1', 'y', 't'] else False
+    args.tracking = True if args.tracking.lower() in ['true', 'yes', '1', 'y', 't'] else False
 
     # get parent directory for storing simulation data
     parent_dir = return_parent_path(args)
@@ -62,7 +63,10 @@ def get_from_config(args):
         try:
             stats = load_stats(args.stats)
             fitness = load_stats(args.fitness)
-            tracker = load_tracker(args.tracker)
+            if args.tracking:
+                tracker = load_tracker(args.tracker)
+            else:
+                tracker = []
         except OSError:
             stats = []
             fitness = []
