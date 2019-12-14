@@ -91,7 +91,7 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_ind
 
         for indiv, genome in zip(pop, gene_pool):
             _move_individual(indiv, genome, step, sim_id)
-            if track_individuals:
+            if track_individuals and step % 10 == 0:
                 x, y = _get_pos(indiv, sim_id)
                 if indiv in ind_tracker.keys():
                     ind_tracker[indiv].append([x, y])

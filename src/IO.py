@@ -63,7 +63,7 @@ def get_from_config(args):
         try:
             stats = load_stats(args.stats)
             fitness = load_stats(args.fitness)
-            if args.tracking:
+            if args.tracking and args.show_stats:
                 tracker = load_tracker(args.tracker)
             else:
                 tracker = []
@@ -74,7 +74,7 @@ def get_from_config(args):
 
     # load files specified or return defaults
     if args.visualize:
-        if len(stats) < 1 or len(fitness) < 1 or len(tracker) < 1:
+        if args.show_stats and (len(stats) < 1 or len(fitness) < 1 or (len(tracker) < 1 and args.tracking)):
             print('evolution data not found in {}'.format(return_parent_path(args)))
             raise SystemExit
 
@@ -160,4 +160,3 @@ def find_latest_gen(save_dir):
             generations.append(int(os.path.basename(file).split('gen_')[-1].split('.pkl')[0]))
 
     return sorted(generations)[-1]
-
