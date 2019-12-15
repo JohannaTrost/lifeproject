@@ -80,7 +80,7 @@ def convert_some_args(args):
         # otherwise take generation specified
         else:
             args.gene_pool_file = parent_dir + 'gen_' + str(args.generation) + '.pkl'
-    if args.generation > 0:
+    if args.generation > 0 and not args.visualize:
         args.generation += 1
         evo_config['simulation']['generations'] = args.generation + args.generations
 
