@@ -23,11 +23,11 @@ def reset_simulation(pop, sim_id):
     p.disconnect(physicsClientId=sim_id)
 
 
-def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, track_individuals=True, num_cores=1, sim_ids=None):
+def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores=1, sim_ids=None):
     # perform simulation using multiprocessing library (on multiple CPU cores) by splitting the amount of individuals
     # into as many chunks as CPU cores were requested
-    def worker(ind, p_gene_pool, fps_sim, duration, sim_id, q):
-        pop, sim_id, tracker = simulate_pop(p_gene_pool.tolist(), fps_sim, duration,
+    def worker(ind, p_gene_pool, e_conf, sim_id, q):
+        pop, sim_id, tracker = simulate_pop(p_gene_pool.tolist(), e_conf,
                                             track_individuals=track_individuals, direct=True, sim_id=sim_id)
         q.put((ind, fitness(pop, sim_id), tracker))
         reset_simulation(pop, sim_id)
@@ -40,7 +40,7 @@ def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, track_individual
             sim_ids.append(_make_sim_env('direct'))
 
     qout = mp.Queue(maxsize=-1)
-    processes = [mp.Process(target=worker, args=(ind, data_in[0], fps, duration_in_sec, data_in[1], qout))
+    processes = [mp.Process(target=worker, args=(ind, data_in[0], evo_config, data_in[1], qout))
                  for ind, data_in in enumerate(zip(split_gene_pool, sim_ids))]
 
     for process in processes:
@@ -68,7 +68,7 @@ def simulate_multi_core(gene_pool, fps=240, duration_in_sec=10, track_individual
     return fitness_all, tracker_all
 
 
-def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_individuals=True, sim_id=None):
+def simulate_pop(gene_pool, evo_config, direct=False, track_individuals=True, sim_id=None):
     # simulate all individuals of one generation
     if sim_id is None:
         if direct:
@@ -76,11 +76,11 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_ind
         else:
             sim_id = _make_sim_env('gui')
 
-    pop = [_genome2simulation(sim_id, genome) for genome in gene_pool]
+    pop = [_genome2simulation(sim_id, evo_config, genome) for genome in gene_pool]
     _disable_collision(sim_id, pop)
 
     # simulate
-    duration_steps = fps * duration_in_sec
+    duration_steps = evo_config['simulation']['fps'] * evo_config['simulation']['duration']
     if duration_steps < 0:
         duration_steps = np.Inf
 
@@ -90,7 +90,7 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_ind
         p.stepSimulation(physicsClientId=sim_id)
 
         for indiv, genome in zip(pop, gene_pool):
-            _move_individual(indiv, genome, step, sim_id)
+            _move_individual(indiv, genome, step, evo_config, sim_id)
             if track_individuals and step % 10 == 0:
                 x, y = _get_pos(indiv, sim_id)
                 if indiv in ind_tracker.keys():
@@ -99,7 +99,7 @@ def simulate_pop(gene_pool, fps=240, duration_in_sec=-1, direct=False, track_ind
                     ind_tracker[indiv] = [[x, y]]
 
         if not direct:
-            time.sleep(1. / fps)
+            time.sleep(1. / evo_config['simulation']['fps'])
         step += 1
     return pop, sim_id, ind_tracker
 
@@ -146,19 +146,19 @@ def _make_mb_dict():
             'axis': [[0, 0, 1]] * 16}
 
 
-def _get_random_color(colormap='viridis'):
-    c_map = cm.get_cmap(colormap, 255)(np.linspace(0, 1, 255))
+def _get_random_color(evo_config):
+    c_map = cm.get_cmap(evo_config['simulation']['colormap'], 255)(np.linspace(0, 1, 255))
     return c_map[np.random.random_integers(0, 254, 1)].tolist()[0]
 
 
-def _genome2multi_body_data(sim_id, genome=({}, {})):
+def _genome2multi_body_data(sim_id, evo_config, genome=({}, {})):
     # create multi body data from genome
     if not bool(genome[0]):
-        genome = _make_random_genome()
+        genome = _make_random_genome(evo_config)
 
     col_box_ids = {}
     vis_box_ids = {}
-    box_color = _get_random_color()
+    box_color = _get_random_color(evo_config)
     sphere_color = [sphere_color * 0.5 for sphere_color in box_color[:-1]] + [1]
     # generate visual/ collision shape ids for objects with 'new' sizes
     for limb in genome[0].keys():
@@ -180,16 +180,16 @@ def _genome2multi_body_data(sim_id, genome=({}, {})):
 
     mb['start_height'] = _get_start_height(genome)
 
-    mb['link_masses'] = [_compute_mass(genome[0]['chest']),
-                         _compute_mass(genome[0]['chest'][2]),
-                         _compute_mass(genome[0]['chest'][2]),
-                         _compute_mass(genome[0]['hip'])] + \
-                        [_compute_mass(genome[0]['chest'][2])] * 4 + \
-                        [_compute_mass(genome[0]['hip'][2])] * 4 + \
-                        [_compute_mass(genome[0]['left_hand']),
-                         _compute_mass(genome[0]['right_hand']),
-                         _compute_mass(genome[0]['left_foot']),
-                         _compute_mass(genome[0]['right_foot'])]
+    mb['link_masses'] = [_compute_mass(genome[0]['chest'], evo_config),
+                         _compute_mass(genome[0]['chest'][2], evo_config),
+                         _compute_mass(genome[0]['chest'][2], evo_config),
+                         _compute_mass(genome[0]['hip'], evo_config)] + \
+                        [_compute_mass(genome[0]['chest'][2], evo_config)] * 4 + \
+                        [_compute_mass(genome[0]['hip'][2], evo_config)] * 4 + \
+                        [_compute_mass(genome[0]['left_hand'], evo_config),
+                         _compute_mass(genome[0]['right_hand'], evo_config),
+                         _compute_mass(genome[0]['left_foot'], evo_config),
+                         _compute_mass(genome[0]['right_foot'], evo_config)]
 
     mb['link_col_shape_ids'] = [col_box_ids['chest'],
                                 col_sphere_id_chest,
@@ -234,12 +234,12 @@ def _genome2multi_body_data(sim_id, genome=({}, {})):
     return mb, col_sphere_id_chest, vis_sphere_id_chest
 
 
-def _genome2simulation(sim_id, genome=({}, {})):
+def _genome2simulation(sim_id, evo_config, genome=({}, {})):
     # transform genome to simulatable multi body (or create new random genome and transform)
     if not bool(genome[0]):
-        mb_data = _genome2multi_body_data(sim_id)
+        mb_data = _genome2multi_body_data(sim_id, evo_config)
     else:
-        mb_data = _genome2multi_body_data(sim_id, genome)
+        mb_data = _genome2multi_body_data(sim_id, evo_config, genome)
 
     mb = mb_data[0]
 

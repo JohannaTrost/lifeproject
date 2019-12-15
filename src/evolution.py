@@ -4,19 +4,22 @@ import numpy as np
 import random
 
 
-def crossing(pairs, gene_pool, max_move_pattern, mutation_prob_ind=0.05, mutation_prob_gene=0.05,
-             mutation_prob_feature=0.05):
+def crossing(pairs, gene_pool, evo_config):
+    mutation_prob_ind = evo_config['evolution']['mutation_prob_ind']
+    mutation_prob_gene = evo_config['evolution']['mutation_prob_gene']
+    mutation_prob_feature = evo_config['evolution']['mutation_prob_feature']
+    max_move_pattern = evo_config['simulation']['fps'] * evo_config['simulation']['duration']
 
     # perform crossing of parents including mutation of a certain probability
     gene_pool_out = []
-    size_keys = _make_size_dict().keys()
+    size_keys = _make_size_dict(evo_config).keys()
     move_keys = _make_limb_dict().keys()
     # iterate over selected pairs
     for pair in pairs:
         child = [{}, {}]
 
         # make dummy genome for mutation
-        rand_child = _make_random_genome()
+        rand_child = _make_random_genome(evo_config)
 
         # assign probability for this genome to mutate
         child_mut_prob = np.random.rand()
@@ -34,11 +37,11 @@ def crossing(pairs, gene_pool, max_move_pattern, mutation_prob_ind=0.05, mutatio
                         # mutation for move pattern size
                         if child_mut_prob < mutation_prob_ind and np.random.rand() < mutation_prob_gene \
                                 and np.random.rand() < mutation_prob_feature:
-                            move_steps = _move_pattern_size()
+                            move_steps = _move_pattern_size(evo_config)
                         else:
                             o = np.mean([len(chromosomes[0][gene]), len(chromosomes[1][gene])])
                             d = len(chromosomes[0][gene]) - len(chromosomes[1][gene])
-                            move_steps = int(np.round(_randoms_between(_limit([o], [d])))[0])
+                            move_steps = int(np.round(_randoms_between(_limit([o], [d], evo_config)))[0])
 
                         chromosomes[0][gene] = _interpolate_move_pattern(chromosomes[0][gene], move_steps,
                                                                          max_size=max_move_pattern)
@@ -49,10 +52,15 @@ def crossing(pairs, gene_pool, max_move_pattern, mutation_prob_ind=0.05, mutatio
                         rand_child[idx][gene] = _interpolate_move_pattern(rand_child[idx][gene], move_steps,
                                                                           max_size=max_move_pattern)
 
+                    # assure symmetry if demanded
+                    if evo_config['individuals']['symmetric'] and 'right_' in gene and gene in size_keys:
+                        child[idx][gene] = child[idx]['left_' + gene.split('right_')[1]]
+                        continue
+
                     # compute crossing function
                     o = np.mean([chromosomes[0][gene], chromosomes[1][gene]], axis=0)
                     d = np.asarray(chromosomes[0][gene]) - np.asarray(chromosomes[1][gene])
-                    child[idx][gene] = _randoms_between(_limit(o, d))
+                    child[idx][gene] = _randoms_between(_limit(o, d, evo_config))
 
                     # make sure to not have sizes greater than 0
                     if gene in size_keys:
@@ -99,7 +107,8 @@ def selection(sorted_pop):
 
 
 # define limit function
-def _limit(mid, diff, a=0.5):
+def _limit(mid, diff, evo_config):
+    a = evo_config['evolution']['alpha_limits']
     limit_1 = np.asarray(mid) + np.asarray(diff) / 2 + a * np.asarray(diff)
     limit_2 = np.asarray(mid) - np.asarray(diff) / 2 - a * np.asarray(diff)
     # determine upper and lower bound
@@ -126,10 +135,11 @@ def _randoms_between(limits):
     return rand_in_limits
 
 
-def _make_random_gene_pool(num_inds):
+def _make_random_gene_pool(evo_config):
     # create gene pool for specified number of individuals
     gene_pool = []
+    num_inds = evo_config['simulation']['individuals']
     for ind in range(num_inds):
-        gene_pool.append(_make_random_genome())
+        gene_pool.append(_make_random_genome(evo_config))
 
     return gene_pool
