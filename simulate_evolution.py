@@ -11,35 +11,38 @@ def main():
     # argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument('--individuals', '-i', default=None, type=int,
-                        help='number of individuals - In case visualization mode was chosen, a random set of i '
-                             'individuals will be chosen (default=40)')
+                        help='number of individuals per generation - In case visualization mode was chosen, a random '
+                             'set of i individuals will be chosen for displaying (default=10)')
     parser.add_argument('--generations', '-g', default=None, type=int,
-                        help='number of generations (default=100)')
+                        help='number of generations to be evolved (default=10)')
     parser.add_argument('--duration', '-d', default=None, type=int,
-                        help='duration of each simulation in seconds (default=10)')
+                        help='duration of each simulation in seconds - Final fitness is obtained after that time '
+                             '(default=10)')
     parser.add_argument('--get_config', '-gc', default='False', type=str,
-                        help='create config file and exit')
+                        help='only create default config file and exit (default=False)')
     parser.add_argument('--evolution_dir', '-e', default='', type=str,
-                        help='directory for evolution to show (default=example)')
+                        help='parent directory for the evolution to be stored or loaded from (default=example)')
+    parser.add_argument('--generation', '-gen', default=-1, type=int,
+                        help='generation on which to continue evolution or generation to display if visualization '
+                             'mode was chosen - Set -1 for latest (default=-1)')
     parser.add_argument('--tracking', '-t', default='True', type=str,
-                        help='whether the path of each individual is recorded (default=True)')
+                        help='whether the path of each individual is recorded throughout the simulation (default=True)')
     parser.add_argument('--save_gene_pool', '-s', default='False', type=str,
                         help='Save all gene pools per generation to new folder - '
-                             'If not set only last generation will be saved')
+                             'If False only the gene pool of the last generation will be saved (default=False)')
     parser.add_argument('--overwrite', '-o', default='False', type=str,
-                        help='overwrite data (default=False)')
+                        help='overwrite existing data (default=False)')
     parser.add_argument('--cores', '-c', default=-1, type=int,
-                        help='number of CPU cores - Set to -1 for all cores (default=-1)')
+                        help='number of CPU cores for simulating one generation - Set to -1 for all cores (default=-1)')
 
     parser.add_argument('--visualize', '-v', default='False', type=str,
-                        help='visualize result specified (default=False)')
-    parser.add_argument('--generation', '-gen', default=-1, type=int,
-                        help='generation selected for displaying - Set -1 for latest (default=-1)')
+                        help='visualize results (default=False)')
     parser.add_argument('--best_only', '-b', default='True', type=str,
-                        help='whether to show only the best or multiple individuals (default=True)')
+                        help='whether to show only the best (True) or multiple individuals specified using -i '
+                             '(default=True)')
     parser.add_argument('--show_stats', '-ss', default='False', type=str,
                         help='whether to show statistics on the evolution - '
-                             'If True only statistics and no rendered individuals are shown (default=False)')
+                             'If True statistics and not rendered individuals are shown (default=False)')
 
     # convert certain arguments
     args, evo_config = IO.convert_some_args(parser.parse_args())

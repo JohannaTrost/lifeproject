@@ -71,7 +71,6 @@ def crossing(pairs, gene_pool, evo_config):
                         mut_features = np.random.rand(len(child[idx][gene])) < mutation_prob_feature
                         child[idx][gene][mut_features] = rand_child[idx][gene][mut_features]
 
-
         gene_pool_out.append(child)
     return gene_pool_out
 

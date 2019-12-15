@@ -15,14 +15,16 @@ def convert_some_args(args):
         args.cores = cpu_count()
 
     # convert to bool
-    args.save_gene_pool = True if args.save_gene_pool.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    args.show_stats = True if args.show_stats.lower() in ['true', 'yes', '1', 'y', 't'] else False
+    args.tracking = True if args.tracking.lower() in ['true', 'yes', '1', 'y', 't'] else False
     args.visualize = True if args.visualize.lower() in ['true', 'yes', '1', 'y', 't'] else False
     args.best_only = True if args.best_only.lower() in ['true', 'yes', '1', 'y', 't'] else False
     args.overwrite = True if args.overwrite.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    args.tracking = True if args.tracking.lower() in ['true', 'yes', '1', 'y', 't'] else False
     args.get_config = True if args.get_config.lower() in ['true', 'yes', '1', 'y', 't'] else False
+    args.show_stats = True if args.show_stats.lower() in ['true', 'yes', '1', 'y', 't'] else False
+    args.save_gene_pool = True if args.save_gene_pool.lower() in ['true', 'yes', '1', 'y', 't'] else False
 
+    # check whether generation and duration was parsed - this is necessary to forward updated values to the evolution
+    # configuration
     gen_was_none, dur_was_none = False, False
 
     if args.generations is None:
@@ -36,10 +38,12 @@ def convert_some_args(args):
     # get parent directory for storing simulation data
     parent_dir = return_parent_path(args)
 
+    # try to load existing evolution file - if it does not exists or cannot be read make default
     try:
         evo_config = read_evo_config(parent_dir + 'evo_config.json')
         print('Using precomputed evolution configuration: {}'.format(parent_dir + 'evo_config.json'))
 
+        # pass updated arguments to evolution configuration
         if not gen_was_none and not args.visualize:
             evo_config['simulation']['generations'] = args.generations
         else:
@@ -54,10 +58,12 @@ def convert_some_args(args):
         print('No configuration found. Creating new default evolution.')
         evo_config = make_default_evo_config()
 
+        # pass arguments to evolution configuration
         evo_config['simulation']['generations'] = args.generations
         evo_config['simulation']['individuals'] = args.individuals
         evo_config['simulation']['duration'] = args.duration
 
+    # define result paths
     args.stats = parent_dir + 'stats.csv'
     args.fitness = parent_dir + 'fitness.csv'
     args.tracker = parent_dir + 'tracker.pkl'
@@ -77,9 +83,12 @@ def convert_some_args(args):
             except IndexError:
                 args.gene_pool_file = None
                 args.generation = 0
+
         # otherwise take generation specified
         else:
             args.gene_pool_file = parent_dir + 'gen_' + str(args.generation) + '.pkl'
+
+    # make sure evolution continues at correct generation
     if args.generation > 0 and not args.visualize:
         args.generation += 1
         evo_config['simulation']['generations'] = args.generation + args.generations
@@ -112,7 +121,7 @@ def get_from_config(args, evo_config):
             fitness = []
             tracker = []
 
-    # load files specified or return defaults
+    # if not results to display were found warn and exit program
     if args.visualize:
         if args.show_stats and (len(stats) < 1 or len(fitness) < 1 or (len(tracker) < 1 and args.tracking)):
             print('evolution data not found in {}'.format(return_parent_path(args)))
