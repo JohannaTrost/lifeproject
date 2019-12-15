@@ -23,12 +23,41 @@ def convert_some_args(args):
     args.tracking = True if args.tracking.lower() in ['true', 'yes', '1', 'y', 't'] else False
     args.get_config = True if args.get_config.lower() in ['true', 'yes', '1', 'y', 't'] else False
 
+    gen_was_none, ind_was_none, dur_was_none = False, False, False
+
+    if args.generations is None:
+        args.generations = 10
+        gen_was_none = True
+
+    if args.individuals is None:
+        args.individuals = 10
+        ind_was_none = True
+
+    if args.duration is None:
+        args.duration = 10
+        dur_was_none = True
+
     # get parent directory for storing simulation data
     parent_dir = return_parent_path(args)
 
     try:
         evo_config = read_evo_config(parent_dir + 'evo_config.json')
         print('Using precomputed evolution configuration: {}'.format(parent_dir + 'evo_config.json'))
+
+        if not gen_was_none:
+            evo_config['simulation']['generations'] = args.generations
+        else:
+            args.generations = evo_config['simulation']['generations']
+
+        if not ind_was_none:
+            evo_config['simulation']['individuals'] = args.individuals
+        else:
+            args.individuals = evo_config['simulation']['individuals']
+
+        if not dur_was_none:
+            evo_config['simulation']['duration'] = args.duration
+        else:
+            args.duration = evo_config['simulation']['duration']
 
     except OSError:
         print('No configuration found. Creating new default evolution.')
@@ -60,6 +89,9 @@ def convert_some_args(args):
         # otherwise take generation specified
         else:
             args.gene_pool_file = parent_dir + 'gen_' + str(args.generation) + '.pkl'
+    if args.generation > 0:
+        args.generation += 1
+        evo_config['simulation']['generations'] = args.generation + args.generations
 
     return args, evo_config
 

@@ -10,12 +10,12 @@ import time
 def main():
     # argument parser
     parser = argparse.ArgumentParser()
-    parser.add_argument('--individuals', '-i', default=40, type=int,
+    parser.add_argument('--individuals', '-i', default=None, type=int,
                         help='number of individuals - In case visualization mode was chosen, a random set of i '
                              'individuals will be chosen (default=40)')
-    parser.add_argument('--generations', '-g', default=100, type=int,
+    parser.add_argument('--generations', '-g', default=None, type=int,
                         help='number of generations (default=100)')
-    parser.add_argument('--duration', '-d', default=10, type=int,
+    parser.add_argument('--duration', '-d', default=None, type=int,
                         help='duration of each simulation in seconds (default=10)')
     parser.add_argument('--get_config', '-gc', default='False', type=str,
                         help='create config file and exit')
@@ -72,7 +72,7 @@ def main():
         print('Connecting to physics server {}'.format(sim_ids))
 
         # iterate over generations
-        for generation in range(args.generation, evo_config['simulation']['generations'] + args.generation):
+        for generation in range(args.generation, args.generations + args.generation):
             start = time.time()
 
             # obtain fitness for each individual in current generation
@@ -117,7 +117,7 @@ def main():
         IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
         if args.tracking:
             IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
-        IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(evo_config['simulation']['generations'] +
+        IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(args.generations +
                                                                       args.generation - 1) + '.pkl')
 
         print('done.')
