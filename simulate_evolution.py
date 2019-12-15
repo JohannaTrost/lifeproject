@@ -17,8 +17,8 @@ def main():
                         help='number of generations (default=100)')
     parser.add_argument('--duration', '-d', default=10, type=int,
                         help='duration of each simulation in seconds (default=10)')
-    parser.add_argument('--fps', '-f', default=240, type=int,
-                        help='frames per second (default=240)')
+    parser.add_argument('--get_config', '-gc', default='False', type=str,
+                        help='create config file and exit')
     parser.add_argument('--evolution_dir', '-e', default='', type=str,
                         help='directory for evolution to show (default=example)')
     parser.add_argument('--tracking', '-t', default='True', type=str,
@@ -42,10 +42,15 @@ def main():
                              'If True only statistics and no rendered individuals are shown (default=False)')
 
     # convert certain arguments
-    args = IO.convert_some_args(parser.parse_args())
+    args, evo_config = IO.convert_some_args(parser.parse_args())
 
     # initialize simulation
-    gene_pool, stats, fitness_over_gen, tracker_over_gen, save_dir = IO.get_from_config(args)
+    gene_pool, evo_config, stats, fitness_over_gen, tracker_over_gen, save_dir = IO.get_from_config(args, evo_config)
+
+    IO.write_evo_config(evo_config, IO.return_parent_path(args) + 'evo_config.json')
+
+    if args.get_config:
+        raise SystemExit
 
     if not args.visualize:
 
@@ -53,10 +58,10 @@ def main():
         print('Starting evolution...')
         save_dir = IO.return_parent_path(args)
 
-        print('Individuals: {}'.format(args.individuals))
-        print('Generations: {}'.format(args.generations))
-        print('Duration per simulation: {}s'.format(args.duration))
-        print('FPS: {}'.format(args.fps))
+        print('Individuals: {}'.format(evo_config['simulation']['individuals']))
+        print('Generations: {}'.format(evo_config['simulation']['generations']))
+        print('Duration per simulation: {}s'.format(evo_config['simulation']['duration']))
+        print('FPS: {}'.format(evo_config['simulation']['fps']))
         print('Number of cores utilized: {}'.format(args.cores))
         print('saving output to ' + save_dir)
         print('')
@@ -67,12 +72,11 @@ def main():
         print('Connecting to physics server {}'.format(sim_ids))
 
         # iterate over generations
-        for generation in range(args.generation, args.generations + args.generation):
+        for generation in range(args.generation, evo_config['simulation']['generations'] + args.generation):
             start = time.time()
 
             # obtain fitness for each individual in current generation
-            fitness, tracker = simulate_multi_core(gene_pool, fps=args.fps,
-                                                   duration_in_sec=args.duration,
+            fitness, tracker = simulate_multi_core(gene_pool, evo_config,
                                                    track_individuals=True,
                                                    num_cores=args.cores, sim_ids=sim_ids)
 
@@ -102,7 +106,7 @@ def main():
                     IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
 
             # create new gene poll by pairing selected parents
-            gene_pool = evo.crossing(selected, gene_pool, max_move_pattern=int(args.fps * args.duration))
+            gene_pool = evo.crossing(selected, gene_pool, evo_config)
 
             # print status
             print('generation {} | avg distance {} | duration {}s'.format(generation, avg_dist,
@@ -113,7 +117,8 @@ def main():
         IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
         if args.tracking:
             IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
-        IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(args.generations + args.generation - 1) + '.pkl')
+        IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(evo_config['simulation']['generations'] +
+                                                                      args.generation - 1) + '.pkl')
 
         print('done.')
         print('')
@@ -122,7 +127,7 @@ def main():
 
         if not args.show_stats:
             # show desired simulation
-            pop, sim_id, tracker = vis.show_individual(gene_pool, args.duration)
+            pop, sim_id, tracker = vis.show_individual(gene_pool, evo_config)
 
             # show tracked paths
             vis.show_path(tracker)

@@ -8,15 +8,17 @@ def get_dist(id_ind, sim_id):
     return (x ** 2 + y ** 2) ** 0.5
 
 
-def _compute_force(mass, min_force=100, max_force=500):
+def _compute_force(mass, evo_config):
     # assumes a standard mass of 1
     # scales the force sigmoid according to the box size.
     # scales roughly around force = mass * 150 centering around mass = 2, f(mass) = 300
+    max_force = evo_config['individuals']['max_force']
+    min_force = evo_config['individuals']['min_force']
     max_force = max_force - min_force
     return 1 / (1 / max_force + np.exp(-mass * 3)) + min_force
 
 
-def _compute_mass(box_size, standard_volume=2.197):
+def _compute_mass(box_size, evo_config):
     # Mass will be scaled with the volume, normalized on the standard volume.
     # The standard volume is the average volume obtained from:
     # np.random.rand(3) / 2 + 0.4, which is the starting box size. Hence this
@@ -24,6 +26,7 @@ def _compute_mass(box_size, standard_volume=2.197):
     # mass of (0.5 / 2 + 0.4)**3 / standard_volume = 1
 
     # ensure format
+    standard_volume = evo_config['individuals']['standard_volume']
     if isinstance(box_size, list):
         if len(box_size) == 1:
             box_size = box_size[0]
@@ -53,14 +56,14 @@ def _make_limb_dict():
             'hip_y': 2, 'hip_x': 1}
 
 
-def _move_individual(obj_id, genome, move_step, sim_id):
+def _move_individual(obj_id, genome, move_step, evo_config, sim_id):
     # move each limb of the individual one step
     limb_dict = _make_limb_dict()
     for key in limb_dict.keys():
-        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % len(genome[1][key])], sim_id)
+        _move_limb(obj_id, limb_dict[key], genome[1][key][move_step % len(genome[1][key])], evo_config, sim_id)
 
 
-def _move_limb(obj_id, limb, target_pos, sim_id):
+def _move_limb(obj_id, limb, target_pos, evo_config, sim_id):
     # move specific limb motor to target position
     p.changeDynamics(obj_id, limb, lateralFriction=2, anisotropicFriction=[1, 1, 0.01], physicsClientId=sim_id)
 
@@ -74,11 +77,13 @@ def _move_limb(obj_id, limb, target_pos, sim_id):
                             limb,
                             p.POSITION_CONTROL,
                             targetPosition=target_pos,
-                            force=_compute_force(_compute_mass(box_size)),
+                            force=_compute_force(_compute_mass(box_size, evo_config), evo_config),
                             physicsClientId=sim_id)
 
 
-def _move_pattern_size(default=240, vary_pattern_length=True):
+def _move_pattern_size(evo_config):
+    default = evo_config['individuals']['start_move_pattern_size']
+    vary_pattern_length = evo_config['individuals']['vary_pattern_length']
     # compute size of movement pattern (jitter of ± 50%)
     if vary_pattern_length:
         return int(default * (1.5 - np.random.rand()))
@@ -86,11 +91,11 @@ def _move_pattern_size(default=240, vary_pattern_length=True):
         return default
 
 
-def _make_move_pattern(limb_dict):
+def _make_move_pattern(limb_dict, evo_config):
     # create random movement pattern
     move_dict = {}
     for key in limb_dict.keys():
-        move_dict[key] = np.random.random(_move_pattern_size()) * 2 * np.pi - np.pi
+        move_dict[key] = np.random.random(_move_pattern_size(evo_config)) * 2 * np.pi - np.pi
     return move_dict
 
 
@@ -102,31 +107,45 @@ def _interpolate_move_pattern(move_pattern, new_size, min_size=10, max_size=1000
         new_size = max_size
 
     if len(move_pattern) > new_size:
-        int_size = new_size * len(move_pattern)
+        int_size = new_size * len(move_pattern) - len(move_pattern) + 1
     else:
         int_size = new_size
 
-    x = np.linspace(0, len(move_pattern) - 1, len(move_pattern))
-    new_x = np.linspace(0, len(move_pattern) - 1, int_size)
+    x = np.linspace(0, len(move_pattern), len(move_pattern))
+    new_x = np.linspace(0, len(move_pattern), int_size)
     interpolated_move_pattern = np.interp(new_x, x, move_pattern)
 
     if len(move_pattern) > new_size:
-        return interpolated_move_pattern[int(len(move_pattern) / 2)::len(move_pattern)]
+        return interpolated_move_pattern[::len(move_pattern)]
     else:
         return interpolated_move_pattern
 
 
-def _make_size_dict():
+def _make_size_dict(evo_config):
+
+    min_size = evo_config['individuals']['min_box_size']
+    max_size = evo_config['individuals']['max_box_size']
+    is_random = evo_config['individuals']['random_box_size']
+    symmetric = evo_config['individuals']['symmetric']
     # make random sizes for each box
-    return {'left_hand': np.random.rand(3) / 2 + 0.4,
-            'right_hand': np.random.rand(3) / 2 + 0.4,
-            'left_foot': np.random.rand(3) / 2 + 0.4,
-            'right_foot': np.random.rand(3) / 2 + 0.4,
-            'chest': np.random.rand(3) / 2 + 0.4,
-            'hip': np.random.rand(3) / 2 + 0.4,
-            }
+    move_dict = {}
+    limb_keys = ['left_hand', 'right_hand', 'left_foot', 'right_foot', 'chest', 'hip']
+    for limb_key in limb_keys:
+
+        if symmetric and 'right_' in limb_key:
+            move_dict[limb_key] = move_dict['left_' + limb_key.split('right_')[1]]
+            continue
+
+        if is_random:
+            limb_size = np.random.rand(3) * (max_size - min_size) + min_size
+        else:
+            limb_size = np.asarray([(max_size + min_size) / 2] * 3)
+
+        move_dict[limb_key] = limb_size
+
+    return move_dict
 
 
-def _make_random_genome():
+def _make_random_genome(evo_config):
     # create random genome by creating chromosomes for box size and movement
-    return _make_size_dict(), _make_move_pattern(_make_limb_dict())
+    return _make_size_dict(evo_config), _make_move_pattern(_make_limb_dict(), evo_config)

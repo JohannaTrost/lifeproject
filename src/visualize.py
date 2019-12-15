@@ -93,7 +93,7 @@ def show_stats(stats):
     plt.show()
 
 
-def show_individual(gene_pool, duration):
+def show_individual(gene_pool, evo_config):
     # show desired simulation
-    return simulate_pop(gene_pool, fps=240, duration_in_sec=duration,
+    return simulate_pop(gene_pool, evo_config,
                         track_individuals=True, direct=False)
