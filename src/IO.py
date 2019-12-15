@@ -40,12 +40,12 @@ def convert_some_args(args):
         evo_config = read_evo_config(parent_dir + 'evo_config.json')
         print('Using precomputed evolution configuration: {}'.format(parent_dir + 'evo_config.json'))
 
-        if not gen_was_none:
+        if not gen_was_none and not args.visualize:
             evo_config['simulation']['generations'] = args.generations
         else:
             args.generations = evo_config['simulation']['generations']
 
-        if not dur_was_none:
+        if not dur_was_none and not args.visualize:
             evo_config['simulation']['duration'] = args.duration
         else:
             args.duration = evo_config['simulation']['duration']
