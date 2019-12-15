@@ -14,15 +14,6 @@ def convert_some_args(args):
     if args.cores == -1:
         args.cores = cpu_count()
 
-    # convert to bool
-    args.tracking = True if args.tracking.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    args.visualize = True if args.visualize.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    args.best_only = True if args.best_only.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    args.overwrite = True if args.overwrite.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    args.get_config = True if args.get_config.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    args.show_stats = True if args.show_stats.lower() in ['true', 'yes', '1', 'y', 't'] else False
-    args.save_gene_pool = True if args.save_gene_pool.lower() in ['true', 'yes', '1', 'y', 't'] else False
-
     # check whether generation and duration was parsed - this is necessary to forward updated values to the evolution
     # configuration
     gen_was_none, dur_was_none = False, False
@@ -112,7 +103,7 @@ def get_from_config(args, evo_config):
         try:
             stats = load_stats(args.stats)
             fitness = load_stats(args.fitness)
-            if args.tracking and args.show_stats:
+            if not args.no_tracking and args.show_stats:
                 tracker = load_tracker(args.tracker)
             else:
                 tracker = []
@@ -123,11 +114,11 @@ def get_from_config(args, evo_config):
 
     # if not results to display were found warn and exit program
     if args.visualize:
-        if args.show_stats and (len(stats) < 1 or len(fitness) < 1 or (len(tracker) < 1 and args.tracking)):
+        if args.show_stats and (len(stats) < 1 or len(fitness) < 1 or (len(tracker) < 1 and not args.no_tracking)):
             print('evolution data not found in {}'.format(return_parent_path(args)))
             raise SystemExit
 
-        if args.best_only:
+        if not args.not_only_best:
             best = int(stats[args.generation][-2])
             gene_pool = [gene_pool[best]]
         else:
@@ -206,7 +197,7 @@ def find_latest_gen(save_dir):
     generations = []
     for file in os.listdir(save_dir):
         if 'gen_' in file:
-            generations.append(int(os.path.basename(file).split('gen_')[-1].split('.pkl')[0]))
+            generations.append(int(str(os.path.basename(file).split('gen_')[-1]).split('.pkl')[0]))
 
     return sorted(generations)[-1]
 
