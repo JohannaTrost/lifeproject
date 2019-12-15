@@ -23,15 +23,11 @@ def convert_some_args(args):
     args.tracking = True if args.tracking.lower() in ['true', 'yes', '1', 'y', 't'] else False
     args.get_config = True if args.get_config.lower() in ['true', 'yes', '1', 'y', 't'] else False
 
-    gen_was_none, ind_was_none, dur_was_none = False, False, False
+    gen_was_none, dur_was_none = False, False
 
     if args.generations is None:
         args.generations = 10
         gen_was_none = True
-
-    if args.individuals is None:
-        args.individuals = 10
-        ind_was_none = True
 
     if args.duration is None:
         args.duration = 10
@@ -48,11 +44,6 @@ def convert_some_args(args):
             evo_config['simulation']['generations'] = args.generations
         else:
             args.generations = evo_config['simulation']['generations']
-
-        if not ind_was_none:
-            evo_config['simulation']['individuals'] = args.individuals
-        else:
-            args.individuals = evo_config['simulation']['individuals']
 
         if not dur_was_none:
             evo_config['simulation']['duration'] = args.duration
