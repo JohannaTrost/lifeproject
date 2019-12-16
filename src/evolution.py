@@ -8,7 +8,7 @@ def crossing(pairs, gene_pool, evo_config):
     mutation_prob_ind = evo_config['evolution']['mutation_prob_ind']
     mutation_prob_gene = evo_config['evolution']['mutation_prob_gene']
     mutation_prob_feature = evo_config['evolution']['mutation_prob_feature']
-    
+
     if evo_config['individuals']['max_move_pattern_size'] is None:
         max_move_pattern = evo_config['simulation']['fps'] * evo_config['simulation']['duration']
     else:
