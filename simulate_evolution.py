@@ -46,6 +46,12 @@ def main():
     parser.add_argument('-v', '--visualize', action='store_true',
                         help='visualize results')
 
+    parser.add_argument('-f', '--follow_target', action='store_true',
+                        help='whether to follow the target with the GUI camera')
+
+    parser.add_argument('-sd', '--slow_down_factor', default=1, type=int,
+                        help='divide GUI update speed by this value')
+
     parser.add_argument('-nb', '--not_only_best', action='store_true',
                         help='do not show result of best, but rather -i random individuals ')
 
@@ -139,7 +145,7 @@ def main():
 
         if not args.show_stats:
             # show desired simulation
-            pop, sim_id, tracker = vis.show_individual(gene_pool, evo_config)
+            pop, sim_id, tracker = vis.show_individual(gene_pool, evo_config, args)
 
             # show tracked paths
             vis.show_path(tracker)
