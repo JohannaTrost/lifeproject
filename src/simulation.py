@@ -68,7 +68,7 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
     return fitness_all, tracker_all
 
 
-def simulate_pop(gene_pool, evo_config, direct=False, track_individuals=True, sim_id=None):
+def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individuals=True, sim_id=None):
     # simulate all individuals of one generation
     if sim_id is None:
         if direct:
@@ -85,7 +85,13 @@ def simulate_pop(gene_pool, evo_config, direct=False, track_individuals=True, si
         duration_steps = np.Inf
 
     step = 0
+    if args is not None:
+        slow_factor = args.slow_down_factor
+    else:
+        slow_factor = 1
+
     ind_tracker = {}
+    track_indiv = pop[0]
     while p.isConnected(sim_id) and step < duration_steps:
         p.stepSimulation(physicsClientId=sim_id)
 
@@ -98,8 +104,14 @@ def simulate_pop(gene_pool, evo_config, direct=False, track_individuals=True, si
                 else:
                     ind_tracker[indiv] = [[x, y]]
 
+        if args is not None:
+            if args.follow_target:
+                target = p.getBasePositionAndOrientation(track_indiv, physicsClientId=sim_id)[0][0:3]
+                p.resetDebugVisualizerCamera(cameraDistance=15, cameraYaw=30, cameraPitch=-52,
+                                             cameraTargetPosition=target)
+
         if not direct:
-            time.sleep(1. / evo_config['simulation']['fps'])
+            time.sleep(1. / evo_config['simulation']['fps'] * slow_factor)
         step += 1
     return pop, sim_id, ind_tracker
 
