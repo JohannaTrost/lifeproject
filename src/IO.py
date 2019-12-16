@@ -18,6 +18,9 @@ def convert_some_args(args):
     # configuration
     gen_was_none, dur_was_none = False, False
 
+    # default values have to be created this way because in visualization mode duration should be passed without
+    # overwriting the config and in case the user wants to continue evolving for some generations, the argument needs
+    # to be passed to the config
     if args.generations is None:
         args.generations = 10
         gen_was_none = True
@@ -118,6 +121,7 @@ def get_from_config(args, evo_config):
             print('evolution data not found in {}'.format(return_parent_path(args)))
             raise SystemExit
 
+        # select the best or i random individuals to display
         if not args.not_only_best:
             best = int(stats[args.generation][-2])
             gene_pool = [gene_pool[best]]
@@ -147,6 +151,7 @@ def return_parent_path(args):
         parent_dir = os.getcwd() + os.path.sep
         if args.save_gene_pool:
 
+            # make unique folder name
             date_time = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
             parent_dir += 'all_gene_pools_{}gen_{}ind_{}dur_' + date_time + os.path.sep
             parent_dir = parent_dir.format(args.generations, args.individuals, args.duration)
@@ -160,16 +165,13 @@ def return_parent_path(args):
 
 
 def save_gene_pool(gene_pool, filename='gen_0.pkl'):
-    output = open(filename, 'wb')
-    pickle.dump(gene_pool, output)
-    output.close()
+    with open(filename, 'wb') as pkl_file:
+        pickle.dump(gene_pool, pkl_file)
 
 
 def load_gene_pool(filename='gen_0.pkl'):
-    pkl_file = open(filename, 'rb')
-    gene_pool = pickle.load(pkl_file)
-    pkl_file.close()
-    return gene_pool
+    with open(filename, 'rb') as pkl_file:
+        return pickle.load(pkl_file)
 
 
 def save_stats(stats, filename='stats.csv'):
@@ -181,16 +183,13 @@ def load_stats(filename='stats.csv'):
 
 
 def save_tracker(tracker, filename='tracker.pkl'):
-    output = open(filename, 'wb')
-    pickle.dump(tracker, output)
-    output.close()
+    with open(filename, 'wb') as pkl_file:
+        pickle.dump(tracker, pkl_file)
 
 
 def load_tracker(filename='tracker.pkl'):
-    pkl_file = open(filename, 'rb')
-    tracker = pickle.load(pkl_file)
-    pkl_file.close()
-    return tracker
+    with open(filename, 'rb') as pkl_file:
+        return pickle.load(pkl_file)
 
 
 def find_latest_gen(save_dir):

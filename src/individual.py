@@ -106,15 +106,22 @@ def _interpolate_move_pattern(move_pattern, new_size, min_size=10, max_size=1000
     elif new_size > max_size:
         new_size = max_size
 
+    # if move pattern is longer than new_size, it cannot be interpolated in the classical sense. We have to find a
+    # common multiple to extent the size to, in order to reslice it properly later. However in order to ensure that we
+    # keep the first and last value in the vector untouched, we have to add 1 and subtract len(move_pattern). Doing as
+    # described will yield a new vector of size new_size, with the first and last value in move_pattern untouched,
+    # whereas values in between are interpolated according to the standard procedure (below).
     if len(move_pattern) > new_size:
         int_size = new_size * len(move_pattern) - len(move_pattern) + 1
     else:
         int_size = new_size
 
+    # linear interpolation
     x = np.linspace(0, len(move_pattern), len(move_pattern))
     new_x = np.linspace(0, len(move_pattern), int_size)
     interpolated_move_pattern = np.interp(new_x, x, move_pattern)
 
+    # in the above described case, we have to reslice the enlarged vector.
     if len(move_pattern) > new_size:
         return interpolated_move_pattern[::len(move_pattern)]
     else:
@@ -122,20 +129,23 @@ def _interpolate_move_pattern(move_pattern, new_size, min_size=10, max_size=1000
 
 
 def _make_size_dict(evo_config):
-
+    # get default variables from config
     min_size = evo_config['individuals']['min_box_size']
     max_size = evo_config['individuals']['max_box_size']
     is_random = evo_config['individuals']['random_box_size']
     symmetric = evo_config['individuals']['symmetric']
+
     # make random sizes for each box
     move_dict = {}
     limb_keys = ['left_hand', 'right_hand', 'left_foot', 'right_foot', 'chest', 'hip']
     for limb_key in limb_keys:
 
+        # if symmetric, we can skip the computation for the other limb
         if symmetric and 'right_' in limb_key:
             move_dict[limb_key] = move_dict['left_' + limb_key.split('right_')[1]]
             continue
 
+        # make 3 values according to the selected policy
         if is_random:
             limb_size = np.random.rand(3) * (max_size - min_size) + min_size
         else:

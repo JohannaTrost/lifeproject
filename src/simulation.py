@@ -32,32 +32,42 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
         q.put((ind, fitness(pop, sim_id), tracker))
         reset_simulation(pop, sim_id)
 
+    # split gene pool into num_cores chunks
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
 
+    # if sim_ids are not set set them in order to launch the simulation
     if sim_ids is None:
         sim_ids = []
         for simulation in range(num_cores):
             sim_ids.append(_make_sim_env('direct'))
 
+    # make multiprocessing queue
     qout = mp.Queue(maxsize=-1)
+
+    # make parallel processes
     processes = [mp.Process(target=worker, args=(ind, data_in[0], evo_config, data_in[1], qout))
                  for ind, data_in in enumerate(zip(split_gene_pool, sim_ids))]
 
+    # start parallel processes
     for process in processes:
         process.start()
 
+    # get data from queue on the fly to avoid overflow
     unsorted_result = []
     while any(process.is_alive() for process in processes):
         while not qout.empty():
             unsorted_result.append(qout.get(False))
 
+    # since incoming results are not sorted due to different run times of the processes, sort them
     sorted_fitness = [t[1] for t in sorted(unsorted_result)]
     sorted_tracker = [t[2] for t in sorted(unsorted_result)]
 
+    # make fitness output
     fitness_all = []
     for sub_pop in sorted_fitness:
         fitness_all += sub_pop
 
+    # make tracker output
     tracker_all = {}
     counter = 0
     for sub_pop in sorted_tracker:
@@ -76,12 +86,14 @@ def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individua
         else:
             sim_id = _make_sim_env('gui')
 
+    # create multi body IDs for all individuals in pop (given by gene in gene pool)
     pop = [_genome2simulation(sim_id, evo_config, genome) for genome in gene_pool]
     _disable_collision(sim_id, pop)
 
     # simulate
     duration_steps = evo_config['simulation']['fps'] * evo_config['simulation']['duration']
 
+    # wrap some arguments from argument parser
     step = 0
     if args is not None:
         slow_factor = args.slow_down_factor
@@ -93,13 +105,17 @@ def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individua
     if duration_steps < 0:
         duration_steps = np.Inf
 
+    # actual simulation
     ind_tracker = {}
     follow_indiv = pop[0]
     while p.isConnected(sim_id) and step < duration_steps:
         p.stepSimulation(physicsClientId=sim_id)
 
+        # move all limbs
         for indiv, genome in zip(pop, gene_pool):
             _move_individual(indiv, genome, step, evo_config, sim_id)
+
+            # record x and y position every 10th step to avoid memory overflow
             if track_individuals and step % 10 == 0:
                 x, y = _get_pos(indiv, sim_id)
                 if indiv in ind_tracker.keys():
@@ -107,12 +123,14 @@ def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individua
                 else:
                     ind_tracker[indiv] = [[x, y]]
 
+        # set camera position to position of first individual in pop
         if args is not None:
             if args.follow_target:
                 target = p.getBasePositionAndOrientation(follow_indiv, physicsClientId=sim_id)[0][0:3]
                 p.resetDebugVisualizerCamera(cameraDistance=15, cameraYaw=30, cameraPitch=-52,
                                              cameraTargetPosition=target)
 
+        # for GUI only
         if not direct:
             time.sleep(1. / evo_config['simulation']['fps'] * slow_factor)
         step += 1
@@ -126,7 +144,10 @@ def _make_sim_env(gui_or_direct):
     else:
         sim_id = p.connect(p.DIRECT)
 
-    p.setGravity(0, 0, -9.81, physicsClientId=sim_id)
+    # gravity -10 to make simulation computationally easier
+    p.setGravity(0, 0, -10, physicsClientId=sim_id)
+
+    # surface
     p.createMultiBody(0, p.createCollisionShape(p.GEOM_PLANE, physicsClientId=sim_id), physicsClientId=sim_id)
     return sim_id
 
@@ -162,6 +183,7 @@ def _make_mb_dict():
 
 
 def _get_random_color(evo_config):
+    # create colormap to color individuals such that they fit a certain scheme
     c_map = cm.get_cmap(evo_config['simulation']['colormap'], 255)(np.linspace(0, 1, 255))
     return c_map[np.random.random_integers(0, 254, 1)].tolist()[0]
 
@@ -193,8 +215,10 @@ def _genome2multi_body_data(sim_id, evo_config, genome=({}, {})):
     # fill multi body parameter values
     mb = _make_mb_dict()
 
+    # start height is largest z-size of all limbs
     mb['start_height'] = _get_start_height(genome)
 
+    # masses vary with volume. Means they have to be computed for each limb separately
     mb['link_masses'] = [_compute_mass(genome[0]['chest'], evo_config),
                          _compute_mass(genome[0]['chest'][2], evo_config),
                          _compute_mass(genome[0]['chest'][2], evo_config),
@@ -206,6 +230,7 @@ def _genome2multi_body_data(sim_id, evo_config, genome=({}, {})):
                          _compute_mass(genome[0]['left_foot'], evo_config),
                          _compute_mass(genome[0]['right_foot'], evo_config)]
 
+    # assign collision and visual shape ids
     mb['link_col_shape_ids'] = [col_box_ids['chest'],
                                 col_sphere_id_chest,
                                 col_sphere_id_chest,
@@ -228,6 +253,7 @@ def _genome2multi_body_data(sim_id, evo_config, genome=({}, {})):
                                 vis_box_ids['left_foot'],
                                 vis_box_ids['right_foot']]
 
+    # link positions must be half the size of objects of both ends or be zero
     mb['link_pos'] = [[0, genome[0]['chest'][1] + genome[0]['chest'][2], 0],
                       [0, genome[0]['chest'][1] + genome[0]['chest'][2], 0],
                       [0, 0, 0],
