@@ -10,39 +10,48 @@ import time
 def main():
     # argument parser
     parser = argparse.ArgumentParser()
-    parser.add_argument('--individuals', '-i', default=None, type=int,
+    parser.add_argument('-i', '--individuals', default=None, type=int,
                         help='number of individuals per generation - In case visualization mode was chosen, a random '
                              'set of i individuals will be chosen for displaying (default=10)')
-    parser.add_argument('--generations', '-g', default=None, type=int,
+
+    parser.add_argument('-g', '--generations', default=None, type=int,
                         help='number of generations to be evolved (default=10)')
-    parser.add_argument('--duration', '-d', default=None, type=int,
+
+    parser.add_argument('-d', '--duration', default=None, type=int,
                         help='duration of each simulation in seconds - Final fitness is obtained after that time '
                              '(default=10)')
-    parser.add_argument('--get_config', '-gc', default='False', type=str,
-                        help='only create default config file and exit (default=False)')
-    parser.add_argument('--evolution_dir', '-e', default='', type=str,
+
+    parser.add_argument('-gc', '--get_config', action='store_true',
+                        help='only create default config file and exit')
+
+    parser.add_argument('-e', '--evolution_dir', default='', type=str,
                         help='parent directory for the evolution to be stored or loaded from (default=example)')
-    parser.add_argument('--generation', '-gen', default=-1, type=int,
+
+    parser.add_argument('-gen', '--generation', default=-1, type=int,
                         help='generation on which to continue evolution or generation to display if visualization '
                              'mode was chosen - Set -1 for latest (default=-1)')
-    parser.add_argument('--tracking', '-t', default='True', type=str,
-                        help='whether the path of each individual is recorded throughout the simulation (default=True)')
-    parser.add_argument('--save_gene_pool', '-s', default='False', type=str,
-                        help='Save all gene pools per generation to new folder - '
-                             'If False only the gene pool of the last generation will be saved (default=False)')
-    parser.add_argument('--overwrite', '-o', default='False', type=str,
-                        help='overwrite existing data (default=False)')
-    parser.add_argument('--cores', '-c', default=-1, type=int,
+
+    parser.add_argument('-nt', '--no_tracking', action='store_true',
+                        help='disable tracker for individuals')
+
+    parser.add_argument('-s', '--save_gene_pool', action='store_true',
+                        help='Save all gene pools per generation to new folder')
+
+    parser.add_argument('-o', '--overwrite', action='store_true',
+                        help='overwrite existing data')
+
+    parser.add_argument('-c', '--cores', default=-1, type=int,
                         help='number of CPU cores for simulating one generation - Set to -1 for all cores (default=-1)')
 
-    parser.add_argument('--visualize', '-v', default='False', type=str,
-                        help='visualize results (default=False)')
-    parser.add_argument('--best_only', '-b', default='True', type=str,
-                        help='whether to show only the best (True) or multiple individuals specified using -i '
-                             '(default=True)')
-    parser.add_argument('--show_stats', '-ss', default='False', type=str,
+    parser.add_argument('-v', '--visualize', action='store_true',
+                        help='visualize results')
+
+    parser.add_argument('-nb', '--not_only_best', action='store_true',
+                        help='do not show result of best, but rather -i random individuals ')
+
+    parser.add_argument('-ss', '--show_stats', action='store_true',
                         help='whether to show statistics on the evolution - '
-                             'If True statistics and not rendered individuals are shown (default=False)')
+                             'If set, statistics and not rendered individuals are shown')
 
     # convert certain arguments
     args, evo_config = IO.convert_some_args(parser.parse_args())
@@ -80,7 +89,7 @@ def main():
 
             # obtain fitness for each individual in current generation
             fitness, tracker = simulate_multi_core(gene_pool, evo_config,
-                                                   track_individuals=True,
+                                                   track_individuals=(not args.no_tracking),
                                                    num_cores=args.cores, sim_ids=sim_ids)
 
             # sort fitness descending
@@ -95,7 +104,7 @@ def main():
 
             stats.append([generation, avg_dist, best, fitness[best]])
             fitness_over_gen.append(fitness + [generation])
-            if args.tracking:
+            if not args.no_tracking:
                 tracker_over_gen.append(tracker)
 
             # if desired save state of current gene pool
@@ -105,7 +114,7 @@ def main():
                 # to make sure files are present even if the evolution was interrupted
                 IO.save_stats(stats, filename=save_dir + 'stats.csv')
                 IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
-                if args.tracking:
+                if not args.no_tracking:
                     IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
 
             # create new gene poll by pairing selected parents
@@ -118,7 +127,7 @@ def main():
         # save statistics, fitness and position data and gene pool
         IO.save_stats(stats, filename=save_dir + 'stats.csv')
         IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
-        if args.tracking:
+        if not args.no_tracking:
             IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
         IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(args.generations +
                                                                       args.generation - 1) + '.pkl')
@@ -137,7 +146,7 @@ def main():
 
         else:
             # show stats
-            if args.tracking:
+            if not args.no_tracking:
                 # show tracked paths
                 tracked_paths = IO.load_tracker(args.tracker)
                 vis.show_path(tracked_paths[args.generation], title='paths of gen {}'.format(args.generation))
