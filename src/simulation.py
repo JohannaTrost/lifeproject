@@ -91,6 +91,7 @@ def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individua
         slow_factor = 1
 
     ind_tracker = {}
+    track_indiv = pop[0]
     while p.isConnected(sim_id) and step < duration_steps:
         p.stepSimulation(physicsClientId=sim_id)
 
@@ -102,11 +103,12 @@ def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individua
                     ind_tracker[indiv].append([x, y])
                 else:
                     ind_tracker[indiv] = [[x, y]]
-                    
+
         if args is not None:
             if args.follow_target:
-                target = p.getBasePositionAndOrientation(indiv, physicsClientId=sim_id)[0][0:3]
-                p.resetDebugVisualizerCamera(cameraDistance=15, cameraYaw=30, cameraPitch=-52, cameraTargetPosition=target)
+                target = p.getBasePositionAndOrientation(track_indiv, physicsClientId=sim_id)[0][0:3]
+                p.resetDebugVisualizerCamera(cameraDistance=15, cameraYaw=30, cameraPitch=-52,
+                                             cameraTargetPosition=target)
 
         if not direct:
             time.sleep(1. / evo_config['simulation']['fps'] * slow_factor)
