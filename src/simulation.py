@@ -81,14 +81,17 @@ def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individua
 
     # simulate
     duration_steps = evo_config['simulation']['fps'] * evo_config['simulation']['duration']
-    if duration_steps < 0:
-        duration_steps = np.Inf
 
     step = 0
     if args is not None:
         slow_factor = args.slow_down_factor
+        if args.duration is not None:
+            duration_steps = args.duration * evo_config['simulation']['fps']
     else:
         slow_factor = 1
+
+    if duration_steps < 0:
+        duration_steps = np.Inf
 
     ind_tracker = {}
     follow_indiv = pop[0]
