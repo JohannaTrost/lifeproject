@@ -42,7 +42,7 @@ def convert_some_args(args):
 
         if not dur_was_none and not args.visualize:
             evo_config['simulation']['duration'] = args.duration
-        else:
+        elif dur_was_none:
             args.duration = evo_config['simulation']['duration']
 
     except OSError:
