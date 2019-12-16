@@ -49,7 +49,7 @@ def main():
     parser.add_argument('-f', '--follow_target', action='store_true',
                         help='whether to follow the target with the GUI camera')
 
-    parser.add_argument('-sd', '--slow_down_factor', default=1, type=int,
+    parser.add_argument('-sd', '--slow_down_factor', default=1., type=float,
                         help='divide GUI update speed by this value')
 
     parser.add_argument('-nb', '--not_only_best', action='store_true',
