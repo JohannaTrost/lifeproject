@@ -96,7 +96,16 @@ def _make_move_pattern(limb_dict, evo_config):
     move_dict = {}
     for key in limb_dict.keys():
         move_dict[key] = np.random.random(_move_pattern_size(evo_config)) * 2 * np.pi - np.pi
+
+        # rescale step sizes to make the absolute values summing up to 2 pi
+        if evo_config['individuals']['normalize_move_pattern']:
+            move_dict[key] = _normalize_move_pattern(move_dict[key])
     return move_dict
+
+
+def _normalize_move_pattern(move_pattern, max_val=2*np.pi):
+    # normalize move pattern to make the steps sizes sum up to max_val
+    return move_pattern / np.sum(np.abs(move_pattern)) * max_val
 
 
 def _interpolate_move_pattern(move_pattern, new_size, min_size=10, max_size=1000):

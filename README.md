@@ -95,6 +95,7 @@ an example `evo_config.json` file looks like this:
     "max_force": 500,                 -> maximum force per limb
     "start_move_pattern_size": 240,   -> size of the initial moving pattern (at 240 fps, this corresponds to 1s of steps)
     "vary_pattern_length": true,      -> whether to vary the length of the moving pattern by evolution
+    "normalize_move_pattern": false,  -> whether to normalize the move pattern such that all step sizes sum up to 2 pi
     "standard_volume": 2.197          -> scales the mass to be at 1 if the cube is shaped 1.3^3 (default half size * 2)
     }, 
 "simulation": 

@@ -1,5 +1,5 @@
 from src.individual import _make_random_genome, get_dist, _make_size_dict, \
-    _interpolate_move_pattern, _make_limb_dict, _move_pattern_size
+    _interpolate_move_pattern, _make_limb_dict, _move_pattern_size, _normalize_move_pattern
 import numpy as np
 import random
 
@@ -66,14 +66,18 @@ def crossing(pairs, gene_pool, evo_config):
                     d = np.asarray(chromosomes[0][gene]) - np.asarray(chromosomes[1][gene])
                     child[idx][gene] = _randoms_between(_limit(o, d, evo_config))
 
-                    # make sure to not have sizes greater than 0
-                    if gene in size_keys:
-                        child[idx][gene][child[idx][gene] <= 0] = 0.01
-
                     # mutate if probability allows
                     if child_mut_prob < mutation_prob_ind and np.random.rand() < mutation_prob_gene:
                         mut_features = np.random.rand(len(child[idx][gene])) < mutation_prob_feature
                         child[idx][gene][mut_features] = rand_child[idx][gene][mut_features]
+
+                    # make sure move patterns are normalized to sum to 2 pi if desired
+                    if evo_config['individuals']['normalize_move_pattern'] and gene in move_keys:
+                        child[idx][gene] = _normalize_move_pattern(child[idx][gene])
+
+                    # make sure to not have sizes greater than 0
+                    if gene in size_keys:
+                        child[idx][gene][child[idx][gene] <= 0] = 0.01
 
         gene_pool_out.append(child)
     return gene_pool_out

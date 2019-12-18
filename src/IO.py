@@ -221,7 +221,8 @@ def make_default_evo_config():
         'max_force': 500,
         'start_move_pattern_size': 240,
         'max_move_pattern_size': None,
-        'vary_pattern_length': True
+        'vary_pattern_length': True,
+        'normalize_move_pattern': False
         },
         'simulation': {
         'fps': 240,
