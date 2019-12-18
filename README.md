@@ -38,7 +38,7 @@ optional arguments:
                         generation to display if visualization mode was chosen
                         - Set -1 for latest (default=-1)
   -nt, --no_tracking    disable tracker for individuals
-  -s, --save_gene_pool  Save all gene pools per generation to new folder
+  -s, --save_gene_pool  Save to new folder (including all gene pools per generation)
   -o, --overwrite       overwrite existing data
   -c CORES, --cores CORES
                         number of CPU cores for simulating one generation -
@@ -55,29 +55,84 @@ optional arguments:
 
 Note that there are two different modes in which the script can be use: simulation and visualization mode. Within the simulation mode the evolution is simulated according to the specifications. The visualization mode can be used to readout the result of the evolution.
 
+## Arguments explained
+
+`-i <int>` example: `-i 100`
+
+The number of individuals that are initially created. It is ensured that the number of individuals cannot change during the evolution. When performing the crossing it is thus ensured that as many parent pairs are selected as individuals were present in the parent generation.
+
+`-g <int>` example: `-g 80`
+
+The number of times the gene pool will be updated. Note that when continuing on an evolution, this number will determine the amount of additional generations that will be computed. Pay attention to the number in the `.json` file (explained below), because when continuing an evolution the number from the configuration will be interpreted as additional generations to be computed.
+
+`-d <int>` example: `-d 40`
+
+Fiteness of each individual is defined as the distance it can make between it's origin of creating and the point were it is located after a certain amount of time. This time is defined here and is specified in seconds. Thus using the above example, will simulate each individuals for 40s and evaluate the fitness at the last time point. Note, that during evolution (were no GUI output is shown), 40s do not correspond to actual real time 40s, but rather the amount of update steps, given a certain frame rate. If the frame rate was set to 240 frames per second (fps), then 240 * 40 updates will be performed during the simulation of one individual.
+
+`-gc`
+
+Flag indicating that only a configuration file was requested. The configuration file is created according to other arguments passed to the function and stored either in the `example` directory, or a new directory based on the specifications, if the `-s` flag was added as well.
+
+`-e <str>` example: `-e /my/path/to/where/evolution/takes/place`
+
+Defines the parent directory of the current simulation (default is `/example`). All results will be stored here or read from.
+
+`-gen <int>` example: `-gen 42`
+
+The generation selected from a pre-computed evolution. This can either be the generation from the evolution is asked to be continued from, or the generation selected for displaying results. In case `-gen -1` is set, the last generation present will be used. Note that in order for this argument to take effect, at least one `gen_<int>.pkl` file must be present in the evolution directory.
+
+`-nt`
+
+By default the location of every individual during simulation is recorded for every 10th step. Since this can yield relatively large file sizes when storing tracking data, this flag ommits tracking from the simulation and thus only stores the tracked path for the very last simulation (generation). Furthermore it is necessary to add this flag, if statistics are requested to be shown (see `-ss` flag), if there is no tracking information present in the respective evolution directory.
+
+`-s`
+
+Adding this flag will create a new folder for the simulation were all data is stored. The folder will be called `/all_gene_pools_<specifications>` where "specifications" is replaced by the number of generations, individuals and simulation duration. Furthermore adding this flag will cause the program to store every generation of the evolution process as a single `gen_<int>.pkl` file. If you wish to save all data to a newly created folder, but want to ommit storing all generations separately, create a new folder manually and give it as a value to the `-e <str>` argument.
+
+`-o`
+
+Overwrites existing data. By default the program will continue on the last generation present in the folder (if not specified otherwise). This flag will cause the program to start over from generation 0 and overwrite existing files.
+
+`-c <int>` example: `-c 8`
+
+The number of CPU cores utilized to perform the simulations of individuals in parallel. By default this argument is set to `-c -1` which utilizes all available CPU cores. In general the simulation of each individual in the physics environment, takes up most computational ressources. However, since all individuals are independent of each other, the simulation can be parallelized. Thus the program splits up the amount of individuals into as many chunks as CPU cores were requested and performs thos simulations in parallel. Afterwards the results are concatenated and the crossing is performed. For each core an individual physics server will be created in the background.
+
+`-v`
+
+Evokes the visualization mode. Without adding any of the flags listed below in the above help output, this flag will show a GUI instance, enabling the observation of one or multiple individuals during the simulation. Note that the simulation will take place for as many real time seconds as specified using `-d <int>`. If `-d -1`, the simulation does not stop after a fixed amount of time and has to be terminated using the "Quit" command from the drop down menu of the simulation GUI window. Furthermore it is possible to select a specific generation to show using the `-gen <int>` argument.
+
+After the simulation has finished (or was aborted by the user), an overview plot of all the paths the individuals took is evoked.
+
+`-f`
+
+Causes the GUI camera to follow the first individual in the requested population (if `nb` was not set, this will be the best individual of the selected generation).
+
+`-sd <float>` example: `-sd 2.5`
+
+Slow down factor. Sometimes it can become handy to slow down the simulation to observe detailed behavior of an individual. In the above example, the simulation would go 2.5 times slower, such that the time specified using `-d <int>` is multiplied by 2.5 and update steps are performed at a frame rate of fps / 2.5 . It is possible to use values between 0 and 1 to increase the speed of the simulation likewise.
+
+`-nb`
+
+By default, only the best individual of the selected simulation is show. This behavior can be supressed by adding this flag. In that case the amount of individuals will be displayed, that was defined using `-i <int>`. Note that those individuals are randomly selected if less individuals were requested than present in the population.
+
+`-ss`
+
+Causes visualization mode to not display a rendered simulation, but rather plot overview statistics, such as average performance over generations and paths for some generations. If no path tracker file is present or path plots are not desired, combining this flag with `-nt` is advisable.
+
+
 ## Example
 
-Example for an evolution of 80 individuals over 100 generations, simulating each individual for 40s:
+Example for an evolution of 80 individuals over 100 generations, simulating each individual for 40s were results shall be stored in a new folder:
 
-`python simulate_evolution.py -i 80 -g 100 -d 40`
+`python simulate_evolution.py -i 80 -g 100 -d 40 -s`
 
-if `-s` is added, gene pools for each generation are stored in the format `gen_<generation>.pkl`.
+Example for displaying the 42nd generation of the simulation above for 20s at half speed:
 
-Furthermore it is possible to continue evolving from a certain generation by appending `-gen <number of generation>`.
+`python simulate_evolution.py -v -gen 42 -d 10 -sd 2 -e <path/to/above/simulation>` Note that 10s of simulation are shown with a slow down factor of 2, yielding 20 real time seconds that are displayed.
 
 ## Results
 
 For each evolution a `evo_config.json` file is used to store main parameters on the evolution. Furthermore a `stats.csv` and `fitness.csv` file store basic statistics such as average fitness and fitness per generation and individuals. A `tracker.pkl` file is requested storing the paths of each individual for each simulation. Supress requested tracker file by adding `-nt` to the simulation command.
-
-## Visualization
-
-A rendered instance of the resulting individuals can be obtained by adding the `-v` flag. Per default the last generation is selected, but can be modified by adding `-gen <number of generation>`.
-
-`python simulate_evolution.py -v`
-
-To see more global statistics, add the `-ss` flag. Note that this will supress the rendered instance.
-
-If you want to follow the target with the GUI camera, use the `-f` flag and if you want to slow down the graphical rendering, add `-sd <factor>` to the command.
 
 ## evo_config.json
 
@@ -131,3 +186,18 @@ which creates a sigmoid function f such that force = f(mass) between min_force a
 
 ### moving pattern
 Each limb has an assigned movment pattern. Its array values are called sequentially one for each simulation step. If the end of the pattern is rached, it will repeat.
+
+If requested the movement pattern can be normalized to (e.g.) 2 pi. This would make the sum of all step sizes (absolute values) in the pattern be of 2 pi. Hence it is ensured, that no more than one "round" of a circle can be made per cycle.
+
+## Evolution
+### Fitness
+The fintess is computed as the L2 norm between [0, 0] and the coordinate of any individual at the last time step of the simulation. Note that the z coordinate is ignored.
+
+### selection
+For selecting individuals to carry their genome to the next generation, the fitness is ranked descending, and individuals are selected based on "Concepts fondamentaux des algorithmes évolutionnistes" by Jean-Baptiste Mouret. Once individuals that are allowed to carry their genes over to the next generation are selected, as many pairs as there were individuals in the original population are formed. Thereby individuals are combined randomly with other individuals, ensuring that every individual has been chosen at least once.
+
+### crossing
+Crossing is performed gene wise. For each pair of values a random value is selected between the limits [o - d / 2 - a * d, o + d / 2 + a * d], where "o" is the average of the value paris, "d" the absolute difference and "a" a value to enlarge the search space linearly (in the default case a = 0.5). Thus a random r value would be selected such that o - d / 2 - d * a < r < o + d / 2 + a * d This procedure is repeated for every value- pair across the parent genomes. Afterwards mutation is applied with a certain probability.
+
+### mutation
+Mutation is realized as a random re-initialization of certain features of the genome. Thereby 3 different probabilities can be tuned. 1) the probability that the inidivual mutates at all, 2) the probability that a certain gene mutates (e.g. size of the left hand) and 3) the probability for a certain feature to mutate (e.g. the y size of the left hand).
