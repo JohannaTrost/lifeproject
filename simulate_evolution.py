@@ -5,8 +5,6 @@ import src.IO as IO
 import argparse
 import numpy as np
 import time
-import pickle
-pickle.DEFAULT_PROTOCOL = 4
 
 
 def main():
@@ -93,11 +91,10 @@ def main():
 
             # obtain fitness for each individual in current generation
             fitness, tracker = simulate_multi_core(gene_pool, evo_config,
-                                                   track_individuals=(not args.no_tracking),
-                                                   num_cores=args.cores)
+                                                   track_individuals=(not args.no_tracking), num_cores=args.cores)
 
             # sort fitness descending
-            sorted_genome_ids = np.argsort(fitness)[::-1]  # from:to:instepsof
+            sorted_genome_ids = np.argsort(fitness)[::-1]  #from:to:instepsof
 
             # select best performers and transform into parent pairs
             selected = evo.selection(sorted_genome_ids)
@@ -134,7 +131,7 @@ def main():
         if not args.no_tracking:
             IO.save_tracker(tracker_over_gen, filename=parent_dir + 'tracker.pkl')
         IO.save_gene_pool(gene_pool, filename=parent_dir + 'gen_' + str(args.generations +
-                                                                        args.generation - 1) + '.pkl')
+                                                                      args.generation - 1) + '.pkl')
 
         print('done.')
         print('')
