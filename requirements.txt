@@ -1,0 +1,5 @@
+lxml==4.4.1
+numpy==1.17.2
+pip==19.3.1
+pybullet==2.5.6
+setuptools==41.4.0
