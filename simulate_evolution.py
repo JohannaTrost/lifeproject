@@ -12,7 +12,7 @@ pickle.DEFAULT_PROTOCOL = 4
 def main():
     # argument parser
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--individuals', default=None, type=int,
+    parser.add_argument('-i', '--individuals', default=10, type=int,
                         help='number of individuals per generation - In case visualization mode was chosen, a random '
                              'set of i individuals will be chosen for displaying (default=10)')
 
