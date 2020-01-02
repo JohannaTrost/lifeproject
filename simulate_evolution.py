@@ -5,6 +5,8 @@ import src.IO as IO
 import argparse
 import numpy as np
 import time
+import pickle
+pickle.DEFAULT_PROTOCOL = 4
 
 
 def main():
@@ -63,10 +65,11 @@ def main():
     args, evo_config = IO.convert_some_args(parser.parse_args())
 
     # initialize simulation
-    gene_pool, evo_config, stats, fitness_over_gen, tracker_over_gen, save_dir = IO.get_from_config(args, evo_config)
+    gene_pool, evo_config, stats, fitness_over_gen, tracker_over_gen, parent_dir = IO.get_from_config(args, evo_config)
 
     IO.write_evo_config(evo_config, IO.return_parent_path(args) + 'evo_config.json')
 
+    # only default config file created before exit
     if args.get_config:
         raise SystemExit
 
@@ -74,17 +77,17 @@ def main():
 
         # print summary
         print('Starting evolution...')
-        save_dir = IO.return_parent_path(args)
+        parent_dir = IO.return_parent_path(args)
 
         print('Individuals: {}'.format(evo_config['simulation']['individuals']))
         print('Generations: {}'.format(evo_config['simulation']['generations']))
         print('Duration per simulation: {}s'.format(evo_config['simulation']['duration']))
         print('FPS: {}'.format(evo_config['simulation']['fps']))
         print('Number of cores utilized: {}'.format(args.cores))
-        print('saving output to ' + save_dir)
+        print('saving output to ' + parent_dir)
         print('')
 
-        # make simulation IDs running on as mani servers as there are cores selected
+        # make simulation IDs running on as many servers as there are cores selected
         sim_ids = connect_to_servers(args.cores)
 
         print('Connecting to physics server {}'.format(sim_ids))
@@ -99,7 +102,7 @@ def main():
                                                    num_cores=args.cores, sim_ids=sim_ids)
 
             # sort fitness descending
-            sorted_genome_ids = np.argsort(fitness)[::-1]
+            sorted_genome_ids = np.argsort(fitness)[::-1]  #from:to:instepsof
 
             # select best performers and transform into parent pairs
             selected = evo.selection(sorted_genome_ids)
@@ -115,13 +118,13 @@ def main():
 
             # if desired save state of current gene pool
             if args.save_gene_pool:
-                IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(generation) + '.pkl')
+                IO.save_gene_pool(gene_pool, filename=parent_dir + 'gen_' + str(generation) + '.pkl')
 
                 # to make sure files are present even if the evolution was interrupted
-                IO.save_stats(stats, filename=save_dir + 'stats.csv')
-                IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
+                IO.save_stats(stats, filename=parent_dir + 'stats.csv')
+                IO.save_stats(fitness_over_gen, filename=parent_dir + 'fitness.csv')
                 if not args.no_tracking:
-                    IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
+                    IO.save_tracker(tracker_over_gen, filename=parent_dir + 'tracker.pkl')
 
             # create new gene poll by pairing selected parents
             gene_pool = evo.crossing(selected, gene_pool, evo_config)
@@ -131,11 +134,11 @@ def main():
                                                                           round(time.time() - start)))
 
         # save statistics, fitness and position data and gene pool
-        IO.save_stats(stats, filename=save_dir + 'stats.csv')
-        IO.save_stats(fitness_over_gen, filename=save_dir + 'fitness.csv')
+        IO.save_stats(stats, filename=parent_dir + 'stats.csv')
+        IO.save_stats(fitness_over_gen, filename=parent_dir + 'fitness.csv')
         if not args.no_tracking:
-            IO.save_tracker(tracker_over_gen, filename=save_dir + 'tracker.pkl')
-        IO.save_gene_pool(gene_pool, filename=save_dir + 'gen_' + str(args.generations +
+            IO.save_tracker(tracker_over_gen, filename=parent_dir + 'tracker.pkl')
+        IO.save_gene_pool(gene_pool, filename=parent_dir + 'gen_' + str(args.generations +
                                                                       args.generation - 1) + '.pkl')
 
         print('done.')
