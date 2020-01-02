@@ -1,6 +1,5 @@
 import pybullet as p
-from src.individual import _move_individual, _make_random_genome, _get_pos, \
-    _compute_mass
+from src.individual import _move_individual, _make_random_genome, _get_pos, _compute_mass
 from src.evolution import fitness
 import time
 import numpy as np
@@ -8,45 +7,35 @@ from matplotlib import cm
 import multiprocessing as mp
 
 
-def connect_to_servers(cores):
-    # connect to multiple servers according to the amount of CPU cores requested
-    sim_ids = []
-    for simulation in range(cores):
-        sim_ids.append(_make_sim_env('direct'))
-    return sim_ids
-
-
-def reset_simulation(pop, sim_id):
+def remove_simulation(pop, sim_id):
     # remove all bodies and reset simulation
     [p.removeBody(ind, physicsClientId=sim_id) for ind in pop]
     p.resetSimulation(physicsClientId=sim_id)
     p.disconnect(physicsClientId=sim_id)
 
 
-def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores=1, sim_ids=None):
+def worker(ind, p_gene_pool, e_conf, track_individuals, q):
+    sim_id = _make_sim_env('direct')
+    pop, sim_id, tracker = simulate_pop(p_gene_pool.tolist(), e_conf,
+                                        track_individuals=track_individuals, direct=True, sim_id=sim_id)
+    q.put((ind, fitness(pop, sim_id), tracker))
+    remove_simulation(pop, sim_id)
+
+
+def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores=1):
     # perform simulation using multiprocessing library (on multiple CPU cores) by splitting the amount of individuals
     # into as many chunks as CPU cores were requested
-    def worker(ind, p_gene_pool, e_conf, sim_id, q):
-        pop, sim_id, tracker = simulate_pop(p_gene_pool.tolist(), e_conf,
-                                            track_individuals=track_individuals, direct=True, sim_id=sim_id)
-        q.put((ind, fitness(pop, sim_id), tracker))
-        reset_simulation(pop, sim_id)
+
 
     # split gene pool into num_cores chunks
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
-
-    # if sim_ids are not set set them in order to launch the simulation
-    if sim_ids is None:
-        sim_ids = []
-        for simulation in range(num_cores):
-            sim_ids.append(_make_sim_env('direct'))
 
     # make multiprocessing queue
     qout = mp.Queue(maxsize=-1)
 
     # make parallel processes
-    processes = [mp.Process(target=worker, args=(ind, data_in[0], evo_config, data_in[1], qout))
-                 for ind, data_in in enumerate(zip(split_gene_pool, sim_ids))]
+    processes = [mp.Process(target=worker, args=(ind, data_in, evo_config, track_individuals, qout))
+                 for ind, data_in in enumerate(split_gene_pool)]
 
     # start parallel processes
     for process in processes:
@@ -64,6 +53,8 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
 
     # make fitness output
     fitness_all = []
+
+    # fitness all accumulates all results to one single list such that the distinction between cores is not made anymore
     for sub_pop in sorted_fitness:
         fitness_all += sub_pop
 
@@ -90,7 +81,6 @@ def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individua
     pop = [_genome2simulation(sim_id, evo_config, genome) for genome in gene_pool]
     _disable_collision(sim_id, pop)
 
-    # simulate
     duration_steps = evo_config['simulation']['fps'] * evo_config['simulation']['duration']
 
     # wrap some arguments from argument parser
@@ -126,7 +116,7 @@ def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individua
         # set camera position to position of first individual in pop
         if args is not None:
             if args.follow_target:
-                target = p.getBasePositionAndOrientation(follow_indiv, physicsClientId=sim_id)[0][0:3]
+                target = p.getBasePositionAndOrientation(follow_indiv, physicsClientId=sim_id)[0][0:3]  # x, y, z
                 p.resetDebugVisualizerCamera(cameraDistance=15, cameraYaw=30, cameraPitch=-52,
                                              cameraTargetPosition=target)
 
@@ -269,8 +259,7 @@ def _genome2multi_body_data(sim_id, evo_config, genome=({}, {})):
                       [-genome[0]['left_hand'][0] - genome[0]['chest'][2], 0, 0],
                       [genome[0]['right_hand'][0] + genome[0]['chest'][2], 0, 0],
                       [-genome[0]['left_foot'][0] - genome[0]['hip'][2], 0, 0],
-                      [genome[0]['right_foot'][0] + genome[0]['hip'][2], 0, 0],
-                      ]
+                      [genome[0]['right_foot'][0] + genome[0]['hip'][2], 0, 0]]
 
     return mb, col_sphere_id_chest, vis_sphere_id_chest
 

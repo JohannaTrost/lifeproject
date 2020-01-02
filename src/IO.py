@@ -32,7 +32,7 @@ def convert_some_args(args):
     # get parent directory for storing simulation data
     parent_dir = return_parent_path(args)
 
-    # try to load existing evolution file - if it does not exists or cannot be read make default
+    # try to load existing evolution file - if it does not exist or cannot be read make default
     try:
         evo_config = read_evo_config(parent_dir + 'evo_config.json')
         print('Using precomputed evolution configuration: {}'.format(parent_dir + 'evo_config.json'))
@@ -132,18 +132,20 @@ def get_from_config(args, evo_config):
     return gene_pool, evo_config, stats, fitness, tracker, return_parent_path(args)
 
 
-def new_gene_pool(gene_pool, evo_config):
+def new_gene_pool(gene_pool_file, evo_config):
     # create either random gene pool or load
-    if not isinstance(gene_pool, str):
+    if not isinstance(gene_pool_file, str):
         return _make_random_gene_pool(evo_config)
-    if isinstance(gene_pool, str):
-        if gene_pool.lower() == 'random':
+    if isinstance(gene_pool_file, str):
+        if gene_pool_file.lower() == 'random':
             return _make_random_gene_pool(evo_config)
         else:
-            return load_gene_pool(gene_pool)
+            return load_gene_pool(gene_pool_file)
 
 
 def return_parent_path(args):
+    # returns parent folder to save data in it
+
     # create parent directory for simulation
     if len(args.evolution_dir) > 0:
         parent_dir = args.evolution_dir + os.path.sep
@@ -192,13 +194,15 @@ def load_tracker(filename='tracker.pkl'):
         return pickle.load(pkl_file)
 
 
-def find_latest_gen(save_dir):
-    generations = []
-    for file in os.listdir(save_dir):
+def find_latest_gen(save_folder_dir):
+    latest_gen = 0
+    for file in os.listdir(save_folder_dir):
         if 'gen_' in file:
-            generations.append(int(str(os.path.basename(file).split('gen_')[-1]).split('.pkl')[0]))
+            curr_gen = int(str(os.path.basename(file).split('gen_')[-1]).split('.pkl')[0])
+            if curr_gen > latest_gen:
+                latest_gen = curr_gen
 
-    return sorted(generations)[-1]
+    return latest_gen
 
 
 def read_evo_config(filename='evo_config.json'):
@@ -213,28 +217,28 @@ def write_evo_config(evo_config, filename='evo_config.json'):
 
 def make_default_evo_config():
     evo_config = {'individuals': {
-        'min_box_size': 0.3,
-        'max_box_size': 1.0,
-        'random_box_size': True,
-        'symmetric': False,
-        'min_force': 100,
-        'max_force': 500,
-        'start_move_pattern_size': 240,
-        'max_move_pattern_size': None,
-        'vary_pattern_length': True,
-        'normalize_move_pattern': False
-        },
-        'simulation': {
-        'fps': 240,
-        'colormap': 'viridis'
-        },
-        'evolution': {
-        'mutation_prob_ind': 0.05,
-        'mutation_prob_gene': 0.05,
-        'mutation_prob_feature': 0.05,
-        'alpha_limits': 0.5
-        }
-    }
+                                'min_box_size': 0.3,
+                                'max_box_size': 1.0,
+                                'random_box_size': True,
+                                'symmetric': False,
+                                'min_force': 100,
+                                'max_force': 500,
+                                'start_move_pattern_size': 240,
+                                'max_move_pattern_size': None,
+                                'vary_pattern_length': True,
+                                'normalize_move_pattern': False
+                                },
+                  'simulation': {
+                                'fps': 240,
+                                'colormap': 'viridis'
+                                },
+                  'evolution':  {
+                                'mutation_prob_ind': 0.05,
+                                'mutation_prob_gene': 0.05,
+                                'mutation_prob_feature': 0.05,
+                                'alpha_limits': 0.5
+                                }
+                  }
 
     evo_config['individuals']['standard_volume'] = (evo_config['individuals']['min_box_size'] +
                                                     evo_config['individuals']['max_box_size'])**3
