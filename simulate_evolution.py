@@ -1,4 +1,4 @@
-from src.simulation import simulate_multi_core, connect_to_servers
+from src.simulation import simulate_multi_core
 import src.evolution as evo
 import src.visualize as vis
 import src.IO as IO
@@ -87,11 +87,6 @@ def main():
         print('saving output to ' + parent_dir)
         print('')
 
-        # make simulation IDs running on as many servers as there are cores selected
-        sim_ids = connect_to_servers(args.cores)
-
-        print('Connecting to physics server {}'.format(sim_ids))
-
         # iterate over generations
         for generation in range(args.generation, args.generations + args.generation):
             start = time.time()
@@ -99,10 +94,10 @@ def main():
             # obtain fitness for each individual in current generation
             fitness, tracker = simulate_multi_core(gene_pool, evo_config,
                                                    track_individuals=(not args.no_tracking),
-                                                   num_cores=args.cores, sim_ids=sim_ids)
+                                                   num_cores=args.cores)
 
             # sort fitness descending
-            sorted_genome_ids = np.argsort(fitness)[::-1]  #from:to:instepsof
+            sorted_genome_ids = np.argsort(fitness)[::-1]  # from:to:instepsof
 
             # select best performers and transform into parent pairs
             selected = evo.selection(sorted_genome_ids)
@@ -139,7 +134,7 @@ def main():
         if not args.no_tracking:
             IO.save_tracker(tracker_over_gen, filename=parent_dir + 'tracker.pkl')
         IO.save_gene_pool(gene_pool, filename=parent_dir + 'gen_' + str(args.generations +
-                                                                      args.generation - 1) + '.pkl')
+                                                                        args.generation - 1) + '.pkl')
 
         print('done.')
         print('')
