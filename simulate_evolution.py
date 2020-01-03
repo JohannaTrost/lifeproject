@@ -122,8 +122,9 @@ def main():
             gene_pool = evo.crossing(selected, gene_pool, evo_config)
 
             # print status
-            print('generation {} | avg distance {} | duration {}s'.format(generation, avg_dist,
-                                                                          round(time.time() - start)))
+            print('individuals {} | generation {} | avg distance {} | duration {}s'.format(len(gene_pool), generation,
+                                                                                           avg_dist,
+                                                                                           round(time.time() - start)))
 
         # save statistics, fitness and position data and gene pool
         IO.save_stats(stats, filename=parent_dir + 'stats.csv')
