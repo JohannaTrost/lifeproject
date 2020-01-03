@@ -5,7 +5,7 @@ import time
 import numpy as np
 from matplotlib import cm
 import multiprocessing as mp
-global unsorted_result
+unsorted_result = []
 
 
 def remove_simulation(pop, sim_id):
@@ -40,6 +40,7 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
     pool = mp.Pool(processes=num_cores)
     pool.map(worker, [[ind, data, evo_config, track_individuals] for ind, data in enumerate(split_gene_pool)])
     pool.close()
+    pool.join()
 
     # since incoming results are not sorted due to different run times of the processes, sort them
     sorted_fitness = [t[1] for t in sorted(unsorted_result)]
