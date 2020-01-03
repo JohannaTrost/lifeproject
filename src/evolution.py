@@ -99,8 +99,13 @@ def selection(sorted_pop):
     # by Jean-Baptiste Mouret
     coeff = 1.1
     k = coeff ** (num_survivors + 1) - 1
+
     survivor_ids = list(np.round(num_survivors - (num_survivors / np.log(k + 1)) *
                                  np.log(k * np.random.rand(num_survivors) + 1)))
+
+    while np.unique(survivor_ids).shape[0] < 2:
+        survivor_ids = list(np.round(num_survivors - (num_survivors / np.log(k + 1)) *
+                                     np.log(k * np.random.rand(num_survivors) + 1)))
 
     survivor_ids += survivor_ids  # to ensure population length
 
