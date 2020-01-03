@@ -74,6 +74,7 @@ def convert_some_args(args):
             if any(['gen_' in f for f in os.listdir(parent_dir)]):
                 args.generation = find_latest_gen(parent_dir)
                 args.gene_pool_file = parent_dir + 'gen_' + str(args.generation) + '.pkl'
+                
             else:
                 args.gene_pool_file = None
                 args.generation = 0
