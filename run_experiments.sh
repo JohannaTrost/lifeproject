@@ -8,6 +8,6 @@ for d in `ls -d $DIR/experiments/all_gene_pools_param_comparison/*`; do
 			mkdir $thisExperiment
 		fi
 		cp $d/evo_config.json $thisExperiment/evo_config.json
-		sh $DIR/simulate_evolution_qsub.sh "-e $thisExperiment -s" &
+		sh $DIR/simulate_evolution_qsub.sh "-e $thisExperiment -nt -s -o" &
 	done
 done

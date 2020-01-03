@@ -3,7 +3,7 @@ from datetime import datetime
 import pickle
 import numpy as np
 from src.evolution import _make_random_gene_pool
-from multiprocessing import cpu_count
+from psutil import cpu_count
 import json
 
 
@@ -12,7 +12,7 @@ def convert_some_args(args):
 
     # use all available CPU cores of -1
     if args.cores == -1:
-        args.cores = cpu_count()
+        args.cores = cpu_count(logical=False)
 
     # check whether generation and duration was parsed - this is necessary to forward updated values to the evolution
     # configuration
