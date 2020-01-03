@@ -95,7 +95,6 @@ def main():
 
             # sort fitness descending
             sorted_genome_ids = np.argsort(fitness)[::-1]  #from:to:instepsof
-
             # select best performers and transform into parent pairs
             selected = evo.selection(sorted_genome_ids)
 
