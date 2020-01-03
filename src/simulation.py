@@ -26,7 +26,7 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
     # perform simulation using multiprocessing library (on multiple CPU cores) by splitting the amount of individuals
     # into as many chunks as CPU cores were requested
 
-    # split gene pool into num_cores chunks (at least 10 per core)
+    # split gene pool into num_cores chunks
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
 
     # make multiprocessing queue
