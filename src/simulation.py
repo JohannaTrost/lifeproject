@@ -42,9 +42,9 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
 
     # get data from queue on the fly to avoid overflow
     unsorted_result = []
-    while any(process.is_alive() for process in processes):
+    while any([process.is_alive() for process in processes]):
         while not qout.empty():
-            unsorted_result.append(qout.get())
+            unsorted_result.append(qout.get(block=True, timeout=None))
 
     # since incoming results are not sorted due to different run times of the processes, sort them
     sorted_fitness = [t[1] for t in sorted(unsorted_result)]
