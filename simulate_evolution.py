@@ -132,7 +132,7 @@ def main():
         if not args.no_tracking:
             IO.save_tracker(tracker_over_gen, filename=parent_dir + 'tracker.pkl')
         IO.save_gene_pool(gene_pool, filename=parent_dir + 'gen_' + str(args.generations +
-                                                                      args.generation - 1) + '.pkl')
+                                                                        args.generation - 1) + '.pkl')
 
         print('done.')
         print('')

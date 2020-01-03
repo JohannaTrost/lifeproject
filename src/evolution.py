@@ -120,7 +120,7 @@ def selection(sorted_pop):
         survivor_ids = list(np.round(num_survivors - (num_survivors / np.log(k + 1)) *
                                      np.log(k * np.random.rand(num_survivors) + 1)))
 
-    survivor_ids += survivor_ids  # to ensure population length
+    survivor_ids *= 2  # to ensure population length
 
     pairs = []
     for this_survivor_id in survivor_ids:
