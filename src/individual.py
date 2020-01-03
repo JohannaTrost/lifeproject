@@ -93,7 +93,8 @@ def _move_pattern_size(evo_config):
 
 def _make_move_pattern(limb_dict, evo_config):
     # create random movement pattern
-    move_dict = {}
+    move_dict = {key: None for key in limb_dict.keys()}
+    
     for key in limb_dict.keys():
         move_dict[key] = np.random.random(_move_pattern_size(evo_config)) * 2 * np.pi - np.pi
 
@@ -145,13 +146,13 @@ def _make_size_dict(evo_config):
     symmetric = evo_config['individuals']['symmetric']
 
     # make random sizes for each box
-    move_dict = {}
-    limb_keys = ['left_hand', 'right_hand', 'left_foot', 'right_foot', 'chest', 'hip']
-    for limb_key in limb_keys:
+    size_dict = {key: None for key in ['left_hand', 'right_hand', 'left_foot', 'right_foot', 'chest', 'hip']}
+
+    for size_key in size_dict.keys():
 
         # if symmetric, we can skip the computation for the other limb
-        if symmetric and 'right_' in limb_key:
-            move_dict[limb_key] = move_dict['left_' + limb_key.split('right_')[1]]
+        if symmetric and 'right_' in size_key:
+            size_dict[size_key] = size_dict['left_' + size_key.split('right_')[1]]
             continue
 
         # make 3 values according to the selected policy
@@ -160,9 +161,9 @@ def _make_size_dict(evo_config):
         else:
             limb_size = np.asarray([(max_size + min_size) / 2] * 3)
 
-        move_dict[limb_key] = limb_size
+        size_dict[size_key] = limb_size
 
-    return move_dict
+    return size_dict
 
 
 def _make_random_genome(evo_config):

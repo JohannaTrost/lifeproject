@@ -57,9 +57,22 @@ def crossing(pairs, gene_pool, evo_config):
                                                                           max_size=max_move_pattern)
 
                     # assure symmetry if demanded
-                    if evo_config['individuals']['symmetric'] and 'right_' in gene and gene in size_keys:
-                        child[idx][gene] = child[idx]['left_' + gene.split('right_')[1]]
-                        continue
+                    if evo_config['individuals']['symmetric'] and gene in size_keys:
+                        if 'left_hand' == gene and gene in child[idx].keys():
+                            child[idx]['right_hand'] = child[idx]['left_hand']
+                            continue
+
+                        if 'right_hand' == gene and gene in child[idx].keys():
+                            child[idx]['left_hand'] = child[idx]['right_hand']
+                            continue
+
+                        if 'left_foot' == gene and gene in child[idx].keys():
+                            child[idx]['right_foot'] = child[idx]['left_foot']
+                            continue
+
+                        if 'right_foot' == gene and gene in child[idx].keys():
+                            child[idx]['left_foot'] = child[idx]['right_foot']
+                            continue
 
                     # compute crossing function
                     o = np.mean([chromosomes[0][gene], chromosomes[1][gene]], axis=0)
@@ -99,8 +112,13 @@ def selection(sorted_pop):
     # by Jean-Baptiste Mouret
     coeff = 1.1
     k = coeff ** (num_survivors + 1) - 1
+
     survivor_ids = list(np.round(num_survivors - (num_survivors / np.log(k + 1)) *
                                  np.log(k * np.random.rand(num_survivors) + 1)))
+
+    while np.unique(survivor_ids).shape[0] < 2:
+        survivor_ids = list(np.round(num_survivors - (num_survivors / np.log(k + 1)) *
+                                     np.log(k * np.random.rand(num_survivors) + 1)))
 
     survivor_ids += survivor_ids  # to ensure population length
 
