@@ -38,7 +38,8 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
     # split gene pool into num_cores chunks and compute in parallel pools
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
     pool = mp.Pool(processes=num_cores)
-    pool.imap_unordered(worker, [[ind, data, evo_config, track_individuals] for ind, data in enumerate(split_gene_pool)])
+    pool.imap_unordered(worker, [[ind, data, evo_config, track_individuals]
+                                 for ind, data in enumerate(split_gene_pool)])
     pool.close()
     pool.join()
 
