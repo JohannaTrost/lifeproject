@@ -5,6 +5,7 @@ import time
 import numpy as np
 from matplotlib import cm
 import multiprocessing as mp
+import os
 unsorted_result = []
 
 
@@ -16,32 +17,61 @@ def remove_simulation(pop, sim_id):
 
 
 def worker(args):
-    global unsorted_result
-    ind = args[0]
-    p_gene_pool = args[1]
-    e_conf = args[2]
-    track_individuals = args[3]
-    sim_id = _make_sim_env('direct')
-    pop, sim_id, tracker = simulate_pop(p_gene_pool.tolist(), e_conf,
-                                        track_individuals=track_individuals, direct=True, sim_id=sim_id)
-    unsorted_result.append([ind, fitness(pop, sim_id), tracker])
+    """
+    worker function for parallel processing of simulations
+    args[0] is the index of the worker
+    args[1] is the gene pool (part)
+    args[2] is the evolution configuration
+    args[3] is a boolean value indicating whether to track individual's paths
+    args[4] is the shared queue were data is appended (only for windows)
+    """
+    pop, sim_id, tracker = simulate_pop(args[1].tolist(), args[2], track_individuals=args[3], direct=True,
+                                        sim_id=_make_sim_env('direct'))
+    if os.name == 'nt':
+        args[4].put((args[0], fitness(pop, sim_id), tracker))
+    else:
+        unsorted_result.append([args[0], fitness(pop, sim_id), tracker])
     remove_simulation(pop, sim_id)
 
 
 def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores=1):
-    manager = mp.Manager()
     global unsorted_result
-    unsorted_result = manager.list()
     # perform simulation using multiprocessing library (on multiple CPU cores) by splitting the amount of individuals
     # into as many chunks as CPU cores were requested
 
     # split gene pool into num_cores chunks and compute in parallel pools
     split_gene_pool = np.array_split(np.array(gene_pool), num_cores)
-    pool = mp.Pool(processes=num_cores)
-    pool.imap_unordered(worker, [[ind, data, evo_config, track_individuals]
-                                 for ind, data in enumerate(split_gene_pool)])
-    pool.close()
-    pool.join()
+
+    # multiprocessing on windows works slightly different than on unix. To ensure compatibility two different ways of
+    # multi processing were implemented.
+    if os.name == 'nt':
+        # make multiprocessing queue
+        q_out = mp.Queue(maxsize=-1)
+
+        # make parallel processes
+        processes = [mp.Process(target=worker, args=([ind, data_in, evo_config, track_individuals, q_out]))
+                     for ind, data_in in enumerate(split_gene_pool)]
+
+        # start parallel processes
+        for process in processes:
+            process.start()
+
+        unsorted_result = []
+        # get data from queue on the fly to avoid overflow
+        while any([process.is_alive() for process in processes]):
+            while not q_out.empty():
+                unsorted_result.append(q_out.get(block=True, timeout=None))
+
+    # for unix-oid systems
+    else:
+        manager = mp.Manager()
+        unsorted_result = manager.list()
+
+        pool = mp.Pool(processes=num_cores)
+        pool.imap_unordered(worker, [[ind, data, evo_config, track_individuals]
+                                     for ind, data in enumerate(split_gene_pool)])
+        pool.close()
+        pool.join()
 
     # since incoming results are not sorted due to different run times of the processes, sort them
     sorted_fitness = [t[1] for t in sorted(unsorted_result)]
