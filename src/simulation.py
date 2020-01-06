@@ -90,7 +90,7 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
         q_out = mp.Queue(maxsize=-1)
 
         # make parallel processes
-        processes = [mp.Process(target=worker, args=([ind, data_in, evo_config, track_individuals, q_out]))
+        processes = [mp.Process(target=worker, args=([ind, data_in, evo_config, track_individuals, q_out], ))
                      for ind, data_in in enumerate(split_gene_pool)]
 
         # start parallel processes
