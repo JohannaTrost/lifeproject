@@ -5,6 +5,7 @@ import numpy as np
 from src.evolution import _make_random_gene_pool
 from psutil import cpu_count
 import json
+sep = os.path.sep
 
 
 def convert_some_args(args):
@@ -222,17 +223,17 @@ def return_parent_path(args):
 
     # create parent directory for simulation
     if len(args.evolution_dir) > 0:
-        parent_dir = args.evolution_dir + os.path.sep
+        parent_dir = args.evolution_dir + sep
     else:
-        parent_dir = os.getcwd() + os.path.sep
+        parent_dir = os.getcwd() + sep
         if args.save_gene_pool:
 
             # make unique folder name
             date_time = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
-            parent_dir += 'all_gene_pools_{}gen_{}ind_{}dur_' + date_time + os.path.sep
+            parent_dir += 'all_gene_pools_{}gen_{}ind_{}dur_' + date_time + sep
             parent_dir = parent_dir.format(args.generations, args.individuals, args.duration)
         else:
-            parent_dir += 'example' + os.path.sep
+            parent_dir += 'example' + sep
 
     if not os.path.isdir(parent_dir):
         os.mkdir(parent_dir)
@@ -418,20 +419,20 @@ def make_default_evo_config():
                                 'max_move_pattern_size': None,
                                 'vary_pattern_length': True,
                                 'normalize_move_pattern': False
-                                },
+                                 },
                   'simulation': {
                                 'fps': 240,
                                 'colormap': 'viridis'
                                 },
-                  'evolution':  {
+                  'evolution': {
                                 'mutation_prob_ind': 0.05,
                                 'mutation_prob_gene': 0.05,
                                 'mutation_prob_feature': 0.05,
                                 'alpha_limits': 0.5
-                                }
+                               }
                   }
 
-    evo_config['individuals']['standard_volume'] = (evo_config['individuals']['min_box_size'] +
-                                                    evo_config['individuals']['max_box_size'])**3
+    evo_config['individuals']['standard_volume'] = \
+        (evo_config['individuals']['min_box_size'] + evo_config['individuals']['max_box_size'])**3
 
     return evo_config

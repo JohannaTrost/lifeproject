@@ -2,6 +2,7 @@ import numpy as np
 from src.individual import get_dist, _get_pos
 from src.IO import load_stats
 import os
+sep = os.path.sep
 
 
 def track_individual(ind_id, sim_id, tracker_list):
@@ -48,7 +49,7 @@ def avg_dist(pop, sim_id):
     return np.mean([get_dist(ind, sim_id) for ind in pop])
 
 
-def read_group_stats(experiment_folder='experiments'+os.path.sep+'all_gene_pools_param_comparison'):
+def read_group_stats(experiment_folder='experiments' + sep + 'all_gene_pools_param_comparison'):
     """Collects data for precomputed experiments.
 
     This function looks through the experiment folder and assumes each sub-directory being a different experiment.
@@ -75,11 +76,11 @@ def read_group_stats(experiment_folder='experiments'+os.path.sep+'all_gene_pools
     results = {}
     for experiment in experiments:
         results[experiment] = {}
-        trials = sorted(next(os.walk(experiment_folder + os.path.sep + experiment))[1])
+        trials = sorted(next(os.walk(experiment_folder + sep + experiment))[1])
         for trial in trials:
-            curr_dir = experiment_folder + os.path.sep + experiment + os.path.sep + trial
+            curr_dir = experiment_folder + sep + experiment + sep + trial
             try:
-                results[experiment][trial] = load_stats(curr_dir + os.path.sep + 'stats.csv')
+                results[experiment][trial] = load_stats(curr_dir + sep + 'stats.csv')
             except OSError:
                 print('no group stats for {}'.format(curr_dir))
     return results

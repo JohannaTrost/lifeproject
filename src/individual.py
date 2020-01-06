@@ -240,7 +240,7 @@ def _make_move_pattern(limb_dict, evo_config):
 
     # create random movement pattern
     move_dict = {key: None for key in limb_dict.keys()}
-    
+
     for key in limb_dict.keys():
         move_dict[key] = np.random.random(_move_pattern_size(evo_config)) * 2 * np.pi - np.pi
 
@@ -250,7 +250,7 @@ def _make_move_pattern(limb_dict, evo_config):
     return move_dict
 
 
-def _normalize_move_pattern(move_pattern, max_val=2*np.pi):
+def _normalize_move_pattern(move_pattern, max_val=2 * np.pi):
     """Normalizes movement patterns to ensure all absolute values of all steps sum up to a maximum value.
 
     Parameters
