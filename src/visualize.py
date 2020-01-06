@@ -5,6 +5,17 @@ from matplotlib import cm
 
 
 def show_multiple_gen_paths(gen_tracked_paths):
+    """Plots paths for multiple generations.
+
+    Creates 5 plots evenly spaced across the selected evolution, such that the first and last generation is included.
+    Plots show tracked paths for each individual as seen from on top.
+
+    Parameters
+    ----------
+    gen_tracked_paths : list
+        Tracker for multiple generations.
+    """
+
     # show paths for multiple generations
     coord_max = 0
 
@@ -37,6 +48,21 @@ def show_multiple_gen_paths(gen_tracked_paths):
 
 
 def show_path(tracked_paths, ax_lim=None, title='paths of individuals'):
+    """Show tracked path for single (multicolored) or multiple (one color per individual) individuals.
+
+    Plots the tracked path for selected individuals. If only one individual was selected, a multicolored line indicates
+    the progress of the selected individual. If multiple individuals were selected, a new color will be assigned to each
+    individual.
+
+    Parameters
+    ----------
+    tracked_paths : dict
+        Tracker for one generation. Each key is a different individual.
+    ax_lim : float | int
+        Axis limit ± selected value.
+    title : str
+        Plot title.
+    """
     # show paths for one generation
     plt.figure()
     plt.gcf().set_facecolor('black')
@@ -77,6 +103,14 @@ def show_path(tracked_paths, ax_lim=None, title='paths of individuals'):
 
 
 def show_stats(stats):
+    """Plots statistics for average and best performance over generations.
+
+    Parameters
+    ----------
+    stats : list | np.array
+        Statistics over generations.
+    """
+
     # show summary of fitness over all generations (average and best performer)
     stats = np.asarray(stats)
     plt.figure()
@@ -94,6 +128,19 @@ def show_stats(stats):
 
 
 def show_individual(gene_pool, evo_config, args):
+    """Renders a GUI based simulation for selected individuals.
+
+    Displays a viewable simulation of all individuals in gene_pool.
+
+    Parameters
+    ----------
+    gene_pool : list
+        List of genomes for all individuals.
+    evo_config : dict
+        Configuration file for the current simulation.
+    args : argparse.Namespace
+        Parsed arguments.
+    """
+
     # show desired simulation
-    return simulate_pop(gene_pool, evo_config, args,
-                        track_individuals=True, direct=False)
+    return simulate_pop(gene_pool, evo_config, args, track_individuals=True, direct=False)
