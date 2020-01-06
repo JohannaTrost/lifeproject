@@ -5,6 +5,22 @@ import random
 
 
 def crossing(pairs, gene_pool, evo_config):
+    """Crossing of selected pairs in order to evolve a new generation.
+
+    Computes a new generation by crossing the genomes of both parents in each pair. Note that pairs stores indices
+    referring to entries in gene_pool. A new child is created by selecting values for each feature in each gene randomly
+    within a range determined by the parent's genomes. Afterwards mutation can happen given certain probabilities stored
+    in the evolution configuration.
+
+    Parameters
+    ----------
+    pairs : list
+        Pairs of survivor indices.
+    gene_pool : list
+        List of genomes for all individuals.
+    evo_config : dict
+        Configuration file for the current simulation.
+    """
     mutation_prob_ind = evo_config['evolution']['mutation_prob_ind']
     mutation_prob_gene = evo_config['evolution']['mutation_prob_gene']
     mutation_prob_feature = evo_config['evolution']['mutation_prob_feature']
@@ -97,12 +113,43 @@ def crossing(pairs, gene_pool, evo_config):
 
 
 def fitness(pop, sim_id):
+    """Compute fitness for the entire population based on how far each individual moved.
+
+    Parameters
+    ----------
+    pop : list
+        List of ind_ids for multiple individuals.
+    sim_id : int
+        Index pointing to the physics server of the respective simulation.
+
+    Returns
+    -------
+    fitness_pop : list
+        Fitness for each individual in the population, that is the distance moved from [0, 0] since the start of the
+        simulation.
+    """
+
     # compute fitness as distance to origin
     return [get_dist(ind, sim_id) for ind in pop]
 
 
 def selection(sorted_pop):
-    # perform parent selection based on sorted (according to fitness) population
+    """Select individuals based on performance (i.e. fitness).
+
+    By default as many individuals survive as half the size of the population. From those as many randomly assigned
+    pairs are selected as there were individuals in the original population.
+
+    Parameters
+    ----------
+    sorted_pop : list
+        List of individuals of one population, sorted descending with respect to fitness.
+
+    Returns
+    -------
+    pairs : list
+        Pairs of survivors. Note that len(pairs) == len(sorted_pop).
+
+    """
 
     # want to keep 50% of the pop
     num_survivors = int(0.5 * len(sorted_pop))
@@ -132,8 +179,26 @@ def selection(sorted_pop):
     return pairs
 
 
-# define limit function
 def _limit(mid, diff, evo_config):
+    """Compute limits for random value selected based on the formula:
+
+    limits = mid ± diff ± a * diff, where
+
+    Parameters
+    ----------
+    mid : float | np.array
+        Average between two values.
+    diff : float | np.array
+        Difference between the very same values.
+    evo_config : dict
+        Configuration file for the current simulation. The value 'a' is stored there.
+
+    Returns
+    -------
+    limits : tuple
+        Limits for random value selection.
+    """
+
     a = evo_config['evolution']['alpha_limits']
     limit_1 = np.asarray(mid) + np.asarray(diff) / 2 + a * np.asarray(diff)
     limit_2 = np.asarray(mid) - np.asarray(diff) / 2 - a * np.asarray(diff)
@@ -142,10 +207,24 @@ def _limit(mid, diff, evo_config):
     lower_bounds = np.array(limits_sorted[0])
     upper_bounds = np.array(limits_sorted[1])
 
-    return lower_bounds, upper_bounds
+    limits = (lower_bounds, upper_bounds)
+    return limits
 
 
 def _randoms_between(limits):
+    """Selects random value within a given range.
+
+    Parameters
+    ----------
+    limits : list | tuple
+        Upper and lower limit.
+
+    Returns
+    -------
+    rand_in_limits : float
+        Random value selected from range between limits.
+    """
+
     lows = np.array(limits[0])
     highs = np.array(limits[1])
     # abs difference to shift random distribution that is natively between 0 and 1
@@ -162,6 +241,19 @@ def _randoms_between(limits):
 
 
 def _make_random_gene_pool(evo_config):
+    """Create random gene pool for as many individuals as specified in the evolution configuration.
+
+    Parameters
+    ----------
+    evo_config : dict
+        Configuration file for the current simulation.
+
+    Returns
+    -------
+    gene_pool : list
+        List of genomes for all individuals.
+    """
+
     # create gene pool for specified number of individuals
     gene_pool = []
     num_inds = evo_config['simulation']['individuals']

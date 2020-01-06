@@ -8,6 +8,23 @@ import json
 
 
 def convert_some_args(args):
+    """Converts arguments from argument parser.
+
+    Some arguments obtained from the argument parser need to be pre-processed before usage. E.g. the CPU count has to be
+    converted if -1 was selected, such that the maximum available amount of physical cores is used.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments.
+
+    Returns
+    -------
+    args : argparse.Namespace
+        Parsed arguments with corrections applied.
+    evo_config : dict
+        Configuration file for the current simulation.
+    """
     # ensure arguments have certain formats and convert defaults into meaningful parameters
 
     # use all available CPU cores of -1
@@ -91,6 +108,30 @@ def convert_some_args(args):
 
 
 def get_from_config(args, evo_config):
+    """Output pre-processed data from arguments and evolution configuration.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments.
+    evo_config : dict
+        Configuration file for the current simulation.
+
+    Returns
+    -------
+    gene_pool : list
+        List of genomes for all individuals.
+    evo_config : dict
+        Modified evolution configuration.
+    stats : list
+        Statistics on the current evolution.
+    fitness : list
+        Fitness of the current evolution per individual.
+    tracker : list
+        List of dictionaries to store the paths (x, y coordinates over time) for each individual.
+    parent_dir : str
+        Current working directory of the simulation (evolution directory).
+    """
     # get initial data from parsed arguments
     gene_pool = new_gene_pool(args.gene_pool_file, evo_config)
 
@@ -133,6 +174,24 @@ def get_from_config(args, evo_config):
 
 
 def new_gene_pool(gene_pool_file, evo_config):
+    """Returns new gene pool.
+
+    A new gene pool houses the genomes for all individuals. This can be obtained by reading an existing file from disk
+    or by newly initializing a genepool according to the evolution configuration.
+
+    Parameters
+    ----------
+    gene_pool_file : str | None
+        If None or str 'random' a new gene pools is created randomly. Otherwise gene_pool_file must be a path pointing
+        to an existing gene pool file, which is loaded.
+    evo_config : dict
+        Configuration file for the current simulation.
+
+    Returns
+    -------
+    gene_pool : list
+        List of genomes for all individuals.
+    """
     # create either random gene pool or load
     if not isinstance(gene_pool_file, str):
         return _make_random_gene_pool(evo_config)
@@ -144,6 +203,21 @@ def new_gene_pool(gene_pool_file, evo_config):
 
 
 def return_parent_path(args):
+    """Returns parent directory (evolution directory).
+
+    Obtains the path, where all data is stored to or loaded from. Basically the working directory of the current
+    evolution. Thus also called evolution directory.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments.
+
+    Returns
+    -------
+    parent_dir : str
+        Directory from existing files are loaded or stored. Also called evolution directory.
+    """
     # returns parent folder to save data in it
 
     # create parent directory for simulation
@@ -167,34 +241,118 @@ def return_parent_path(args):
 
 
 def save_gene_pool(gene_pool, filename='gen_0.pkl'):
+    """Saves gene pool to pickle file.
+
+    Parameters
+    ----------
+    gene_pool : list
+        List of genomes for all individuals.
+    filename : str
+        Filename to save the data to.
+    """
+
     with open(filename, 'wb') as pkl_file:
         pickle.dump(gene_pool, pkl_file)
 
 
 def load_gene_pool(filename='gen_0.pkl'):
+    """Loads gene pool from pickle file.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to read the data from.
+
+    Returns
+    -------
+    gene_pool : list
+        List of genomes for all individuals.
+    """
+
     with open(filename, 'rb') as pkl_file:
         return pickle.load(pkl_file)
 
 
 def save_stats(stats, filename='stats.csv'):
+    """Saves statistics to csv file.
+
+    Parameters
+    ----------
+    stats : list | np.array
+        Statistics on the current evolution.
+    filename : str
+        Filename to save the data to.
+    """
+
     np.savetxt(filename, stats, delimiter=',')
 
 
 def load_stats(filename='stats.csv'):
+    """Loads statistics from csv file.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to read the data from.
+
+    Returns
+    -------
+    stats : list
+        Statistics on an evolution.
+    """
+
     return np.loadtxt(filename, delimiter=',').tolist()
 
 
 def save_tracker(tracker, filename='tracker.pkl'):
+    """Saves tracker to pickle file.
+
+    Parameters
+    ----------
+    tracker : list
+        List of tracker dictionaries for all individuals.
+    filename : str
+        Filename to save the data to.
+    """
+
     with open(filename, 'wb') as pkl_file:
         pickle.dump(tracker, pkl_file)
 
 
 def load_tracker(filename='tracker.pkl'):
+    """Loads gene pool from pickle file.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to read the data from.
+
+    Returns
+    -------
+    tracker : list
+        List of tracker dictionaries for all individuals.
+    """
+
     with open(filename, 'rb') as pkl_file:
         return pickle.load(pkl_file)
 
 
 def find_latest_gen(save_folder_dir):
+    """Finds the latest generation in a given evolution directory.
+
+    Within a precomputed evolution, generations are saved as gen_<generation number>.pkl files. This function looks
+    through the specified directory and finds the highest number attached to the file names starting with gen_.
+
+    Parameters
+    ----------
+    save_folder_dir : str
+        Directory used to search for the latest generation.
+
+    Returns
+    -------
+    latest_gen : int
+        Last generation found.
+    """
     latest_gen = 0
     for file in os.listdir(save_folder_dir):
         if 'gen_' in file:
@@ -206,16 +364,49 @@ def find_latest_gen(save_folder_dir):
 
 
 def read_evo_config(filename='evo_config.json'):
+    """Loads evolution configuration from json file.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to read the data from.
+
+    Returns
+    -------
+    evo_config : dict
+        Evolution configuration.
+    """
+
     with open(filename) as json_file:
         return json.load(json_file)
 
 
 def write_evo_config(evo_config, filename='evo_config.json'):
+    """Saves evolution configuration to json file.
+
+    Parameters
+    ----------
+    evo_config : dict
+        Evolution configuration.
+    filename : str
+        Filename to save the data to.
+    """
     with open(filename, 'w') as outfile:
         json.dump(evo_config, outfile)
 
 
 def make_default_evo_config():
+    """Create default evolution configuration.
+
+    Each evolution has a configuration file attached to it. If no file is present, a default file is needed, which is
+    created on demand here.
+
+    Returns
+    -------
+    evo_config : dict
+        Default evolution configuration.
+    """
+
     evo_config = {'individuals': {
                                 'min_box_size': 0.3,
                                 'max_box_size': 1.0,
