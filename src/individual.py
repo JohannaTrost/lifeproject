@@ -151,8 +151,12 @@ def _make_size_dict(evo_config):
     for size_key in size_dict.keys():
 
         # if symmetric, we can skip the computation for the other limb
-        if symmetric and 'right_' in size_key:
+        if symmetric and 'right_' in size_key and size_dict['left_' + size_key.split('right_')[1]] is not None:
             size_dict[size_key] = size_dict['left_' + size_key.split('right_')[1]]
+            continue
+
+        if symmetric and 'left_' in size_key and size_dict['right_' + size_key.split('left_')[1]] is not None:
+            size_dict[size_key] = size_dict['right_' + size_key.split('left_')[1]]
             continue
 
         # make 3 values according to the selected policy
