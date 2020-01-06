@@ -24,9 +24,9 @@ def get_dist(ind_id, sim_id):
 def _compute_force(mass, evo_config):
     """Computes force for a given mass.
 
-    With increasing size, mass increases as well. To boxes sizes cannot grow arbitrarily, the force per mass increases
-    sigmoid to a certain ceiling. After passing this ceiling, increasing mass will not likewise lead to increased force
-    and thus makes it harder for the individual to move.
+    With increasing size, mass increases as well. To ensure box sizes cannot grow arbitrarily, the force per mass
+    increases sigmoid to a certain ceiling. After passing this ceiling, increasing mass will not likewise lead to
+    increased force and thus makes it harder for the individual to move.
 
     Minimum and maximum force are defined in the evolution configuration.
 
@@ -78,7 +78,7 @@ def _compute_mass(box_size, evo_config):
     # ensure format
     standard_volume = evo_config['individuals']['standard_volume']
     if isinstance(box_size, list):
-        if len(box_size) == 1:
+        if len(box_size) == 1:  # sphere
             box_size = box_size[0]
     box_size = np.asarray(box_size)
 
@@ -125,6 +125,7 @@ def _make_limb_dict():
     limb_dict : dict
         Dictionary containing the joint IDs of the multi body.
     """
+
     return {'left_arm_y': 10, 'right_arm_y': 13,
             'left_arm_z': 11, 'right_arm_z': 14,
             'left_leg_y': 4, 'right_leg_y': 7,
@@ -146,7 +147,7 @@ def _move_individual(ind_id, genome, move_step, evo_config, sim_id):
     move_step : int
         Current step. Since each move pattern is a vector of steps, move_step selects the current step. A modulo
         operation is applied to ensure proper step selection, once all steps are used. This renders the move pattern
-        being "circular".
+        "circular".
     evo_config : dict
         Configuration file for the current simulation.
     sim_id : int
@@ -182,7 +183,7 @@ def _move_limb(ind_id, limb, target_pos, evo_config, sim_id):
     box_size = p.getCollisionShapeData(ind_id, limb,
                                        physicsClientId=sim_id)[0][3]
 
-    if p.getCollisionShapeData(ind_id, limb, physicsClientId=sim_id)[0][2] == 2:
+    if p.getCollisionShapeData(ind_id, limb, physicsClientId=sim_id)[0][2] == 2:  # type of object (2 = sphere)
         box_size = box_size[0]
 
     p.setJointMotorControl2(ind_id,
@@ -350,12 +351,17 @@ def _make_size_dict(evo_config):
     for size_key in size_dict.keys():
 
         # if symmetric, we can skip the computation for the other limb
-        if symmetric and 'right_' in size_key and size_dict['left_' + size_key.split('right_')[1]] is not None:
-            size_dict[size_key] = size_dict['left_' + size_key.split('right_')[1]]
+        if symmetric and 'right_hand' == size_key and size_dict['left_hand'] is not None:
+            size_dict[size_key] = size_dict['left_hand']
             continue
-
-        elif symmetric and 'left_' in size_key and size_dict['right_' + size_key.split('left_')[1]] is not None:
-            size_dict[size_key] = size_dict['right_' + size_key.split('left_')[1]]
+        elif symmetric and 'left_hand' == size_key and size_dict['right_hand'] is not None:
+            size_dict[size_key] = size_dict['right_hand']
+            continue
+        elif symmetric and 'left_foot' == size_key and size_dict['right_foot'] is not None:
+            size_dict[size_key] = size_dict['right_foot']
+            continue
+        elif symmetric and 'right_foot' == size_key and size_dict['left_foot'] is not None:
+            size_dict[size_key] = size_dict['left_foot']
             continue
 
         # make 3 values according to the selected policy
