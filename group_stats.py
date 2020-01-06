@@ -4,6 +4,8 @@ import numpy as np
 from scipy import stats
 import matplotlib.pylab as plt
 import os
+sep = os.path.sep
+
 
 generation = 149
 stat_alpha = 0.05
@@ -18,8 +20,9 @@ for experiment in group_stats.keys():
     results_exp_sel_gen = []
     results_sel_gen[experiment] = {}
     results_over_gen[experiment] = []
-    config = read_evo_config('experiments' + os.path.sep + 'all_gene_pools_param_comparison' +
-                             os.path.sep + experiment + os.path.sep + 'evo_config.json')
+    config = read_evo_config(
+        'experiments' + sep + 'all_gene_pools_param_comparison' + sep + experiment + sep + 'evo_config.json')
+
     for trial in group_stats[experiment].keys():
         results_exp_sel_gen.append(group_stats[experiment][trial][generation][1])
         results_over_gen[experiment].append(np.asarray(group_stats[experiment][trial])[:, 1])
@@ -44,8 +47,8 @@ for experiment in group_stats.keys():
 
 plt.figure()
 for this_plot in plot_data_over_gen:
-    plt.fill_between(range(len(this_plot['mean'])), this_plot['mean'] -
-                     (this_plot['std']) / 30**0.5, this_plot['mean'] + (this_plot['std']) / 30**0.5, alpha=0.5)
+    plt.fill_between(range(len(this_plot['mean'])), this_plot['mean'] - (
+        this_plot['std']) / 30**0.5, this_plot['mean'] + (this_plot['std']) / 30**0.5, alpha=0.5)
 
 for this_plot in plot_data_over_gen:
     plt.plot(this_plot['mean'])

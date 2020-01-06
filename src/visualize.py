@@ -78,7 +78,7 @@ def show_path(tracked_paths, ax_lim=None, title='paths of individuals'):
         else:
             c_map = cm.get_cmap('viridis', 255)(np.linspace(0, 1, len(tracked_path)))[:, 0:3]
             for data_point in range(len(tracked_path) - 1):
-                plt.plot(tracked_path[data_point:(data_point+2), 0], tracked_path[data_point:(data_point+2), 1],
+                plt.plot(tracked_path[data_point:(data_point + 2), 0], tracked_path[data_point:(data_point + 2), 1],
                          color=c_map[data_point, :])
             plt.title('path of individual', color='white')
 

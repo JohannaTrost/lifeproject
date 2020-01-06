@@ -130,8 +130,8 @@ def main():
         IO.save_stats(fitness_over_gen, filename=parent_dir + 'fitness.csv')
         if not args.no_tracking:
             IO.save_tracker(tracker_over_gen, filename=parent_dir + 'tracker.pkl')
-        IO.save_gene_pool(gene_pool, filename=parent_dir + 'gen_' + str(args.generations +
-                                                                        args.generation - 1) + '.pkl')
+        IO.save_gene_pool(gene_pool, filename=parent_dir + 'gen_' + str(
+            args.generations + args.generation - 1) + '.pkl')
 
         print('done.')
         print('')
@@ -153,7 +153,7 @@ def main():
                 vis.show_path(tracked_paths[args.generation], title='paths of gen {}'.format(args.generation))
 
                 vis.show_multiple_gen_paths(tracked_paths)
-                
+
             vis.show_stats(IO.load_stats(args.stats))
 
 
