@@ -44,7 +44,7 @@ def main():
                         help='number of CPU cores for simulating one generation - Set to -1 for all cores (default=-1)')
 
     parser.add_argument('-v', '--visualize', action='store_true',
-                        help='visualize results')
+                        help='visualize results - specify evolution directory with the help of -e')
 
     parser.add_argument('-f', '--follow_target', action='store_true',
                         help='whether to follow the target with the GUI camera')
@@ -90,8 +90,10 @@ def main():
             start = time.time()
 
             # obtain fitness for each individual in current generation
-            fitness, tracker = simulate_multi_core(gene_pool, evo_config,
-                                                   track_individuals=(not args.no_tracking), num_cores=args.cores)
+            fitness, tracker = simulate_multi_core(gene_pool,
+                                                   evo_config,
+                                                   track_individuals=(not args.no_tracking),
+                                                   num_cores=args.cores)
 
             # sort fitness descending
             sorted_genome_ids = np.argsort(fitness)[::-1]  # from:to:instepsof
@@ -117,7 +119,7 @@ def main():
                 if not args.no_tracking:
                     IO.save_tracker(tracker_over_gen, filename=parent_dir + 'tracker.pkl')
 
-            # create new gene poll by pairing selected parents
+            # create new gene pool by pairing selected parents
             gene_pool = evo.crossing(selected, gene_pool, evo_config)
 
             # print status
