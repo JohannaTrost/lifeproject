@@ -1,5 +1,4 @@
-from src.stats import read_group_stats
-from src.IO import read_evo_config
+from src.IO import read_evo_config, load_stats
 import numpy as np
 from scipy import stats
 import matplotlib.pylab as plt
@@ -7,91 +6,123 @@ import os
 sep = os.path.sep
 
 
-generation = 125
-generations = 125
+def read_group_stats(experiment_folder='experiments'):
+    """Collects data for precomputed experiments.
+
+    This function looks through the experiment folder and assumes each sub-directory being a different experiment.
+    Within each subdirectory, sub-subdirectories are assumed to represent trials. Within each trial folder the function
+    looks for the respective stats.csv and loads it. The result will be in form of a nested dictionary, where the first
+    level keys are the name of directory defined for each experiment and the second level for each trial. Hence it is
+    advisable to name experiment directories comprehensively and trial directories as increasing integers.
+
+    Parameters
+    ----------
+    experiment_folder : str
+        Path to directory where all experiments are stored.
+
+    Returns
+    -------
+    results : dict
+        Results of selected experiments. This is a nested dictionary, where the first level accepts keys according to
+        the name of the experiment (i.e. name of directory where it was stored) and on the second level the trial, which
+        again is the name of the directory.
+    """
+
+    # read statistics for multiple trial experiments
+    experiments = sorted(next(os.walk(experiment_folder))[1])
+    results = {}
+    for experiment_sel in experiments:
+        results[experiment_sel] = {}
+        trials = sorted(next(os.walk(experiment_folder + sep + experiment_sel))[1])
+        for trial_sel in trials:
+            curr_dir = experiment_folder + sep + experiment_sel + sep + trial_sel
+            try:
+                results[experiment_sel][trial_sel] = load_stats(curr_dir + sep + 'stats.csv')
+            except OSError:
+                print('no group stats for {}'.format(curr_dir))
+    return results
+
+
+# select generations and significance level
+generations = 149
 stat_alpha = 0.05
 
+# read stats from file
 group_stats = read_group_stats()
-results_sel_gen = {}
-results_over_gen = {}
+
+# initialize result variables for plotting
 plot_data_sel_gen = []
 plot_data_over_gen = []
 labels = []
+
 for experiment in group_stats.keys():
-    if experiment[0] == 'e' or experiment[0] == 'f' or experiment[0] == 'g' or experiment[0] == 'h':
-        results_exp_sel_gen = []
-        results_sel_gen[experiment] = {}
-        results_over_gen[experiment] = []
-        config = read_evo_config(
-            'experiments' + sep + 'all_gene_pools_param_comparison' + sep + experiment + sep + 'evo_config.json')
 
-        for trial in group_stats[experiment].keys():
-            results_exp_sel_gen.append(group_stats[experiment][trial][generation][1])
-            results_over_gen[experiment].append(np.asarray(group_stats[experiment][trial])[:generations, 1])
-        if len(results_exp_sel_gen) > 0:
-            results_sel_gen[experiment]['mean'] = np.mean(results_exp_sel_gen)
-            results_sel_gen[experiment]['std'] = np.std(results_exp_sel_gen)
-            results_sel_gen[experiment]['median'] = np.median(results_exp_sel_gen)
-            results_sel_gen[experiment]['min'] = np.min(results_exp_sel_gen)
-            results_sel_gen[experiment]['max'] = np.max(results_exp_sel_gen)
-            results_sel_gen[experiment]['values'] = results_exp_sel_gen
+    # obtain config for labelling
+    config = read_evo_config(
+        'experiments' + sep + experiment + sep + 'evo_config.json')
+    results_exp_sel_gen = []
+    results_over_gen = []
 
-            labels.append('I = {:.2f}\nG = {:.2f}\nF = {:.2f}\nSym = {}'.format(
-                config['evolution']['mutation_prob_ind'],
-                config['evolution']['mutation_prob_gene'],
-                config['evolution']['mutation_prob_feature'],
-                config['individuals']['symmetric'] + 0))
-            plot_data_sel_gen.append(results_exp_sel_gen)
-            tmp = results_over_gen[experiment]
-            results_over_gen[experiment] = {'mean': np.mean(tmp, axis=0),
-                                            'median': np.median(tmp, axis=0),
-                                            'std': np.std(tmp, axis=0)}
-            plot_data_over_gen.append(results_over_gen[experiment])
+    # collect data trial-wise
+    for trial in group_stats[experiment].keys():
+        results_exp_sel_gen.append(group_stats[experiment][trial][generations][1])
+        results_over_gen.append(np.asarray(group_stats[experiment][trial])[:generations, 1])
 
-plt.figure()
-for this_plot in plot_data_over_gen:
-    plt.fill_between(range(len(this_plot['mean'])), this_plot['mean'] - (
-        this_plot['std']) / 30**0.5, this_plot['mean'] + (this_plot['std']) / 30**0.5, alpha=0.5)
+    plot_data_sel_gen.append(results_exp_sel_gen)
+    plot_data_over_gen.append(results_over_gen)
+    labels.append('I = {:.2f}\nG = {:.2f}\nF = {:.2f}\nSym = {}'.format(
+        config['evolution']['mutation_prob_ind'],
+        config['evolution']['mutation_prob_gene'],
+        config['evolution']['mutation_prob_feature'],
+        config['individuals']['symmetric'] + 0))
 
-for this_plot in plot_data_over_gen:
-    plt.plot(this_plot['mean'])
+# box plots
+for y_limit in [(None, None), (0, 500)]:
+    plt.figure(figsize=(16, 9))
+    plt.title('average distances for generation {}'.format(generations))
+    plt.boxplot(plot_data_sel_gen, patch_artist=True, labels=labels)
+    plt.ylabel('average distances')
+    plt.xlabel('mutation rates & symmetry')
+    plt.ylim(y_limit)
+    plt.gcf().subplots_adjust(bottom=0.175)
+    plt.show()
+    plt.savefig('result_plots' + sep + 'group_stats' + sep + 'box_plot_gen_{}_both_sym_ylim_{}.png'.format(
+        generations, int(plt.ylim()[1])))
 
-plt.title('mean and standard error for different mutation rates')
-plt.ylabel('distance')
-plt.xlabel('generation')
 
-p_values = []
-for generation_sig in range(generations):
-    results_sel_gen = {}
-    for experiment in group_stats.keys():
-        results_sel_gen[experiment] = {}
-        results_exp_sel_gen = []
-        for trial in group_stats[experiment].keys():
-            results_exp_sel_gen.append(group_stats[experiment][trial][generation_sig][1])
-        if len(results_exp_sel_gen) > 0:
-            results_sel_gen[experiment]['values'] = results_exp_sel_gen
+# line plots with standard error and significance index
+for index in [(0, int(len(plot_data_over_gen) / 2), 'non_sym'),
+              (int(len(plot_data_over_gen) / 2), len(plot_data_over_gen), 'sym')]:
+    _, p_vals = stats.f_oneway(*plot_data_over_gen[index[0]:index[1]])
 
-    _, p = stats.f_oneway(results_sel_gen['e_all_gene_pools_sym_extremehigh']['values'],
-                          results_sel_gen['g_all_gene_pools_sym_lower']['values'],
-                          results_sel_gen['f_all_gene_pools_sym_higher']['values'],
-                          results_sel_gen['h_all_gene_pools_sym_extremelow']['values'])
-    p_values.append(p)
+    plt.figure(figsize=(16, 9))
+    for this_plot in plot_data_over_gen[index[0]:index[1]]:
+        plt.fill_between(range(len(np.mean(this_plot, axis=0))), np.mean(this_plot, axis=0) - (
+            np.std(this_plot, axis=0)) / 30**0.5, np.mean(this_plot, axis=0) + (np.std(this_plot, axis=0)) / 30**0.5,
+                         alpha=0.5)
 
-# Holm-Bonferroni correction
-# target_alphas = stat_alpha / (len(p_values) - np.asarray(range(1, len(p_values) + 1)) + 1)
-# target_alphas = target_alphas[np.argsort(p_values)]
+    for this_plot in plot_data_over_gen[index[0]:index[1]]:
+        plt.plot(np.mean(this_plot, axis=0))
 
-target_alphas = np.ones(len(p_values)) * stat_alpha
+    # Holm-Bonferroni correction
+    target_alphas_bonf = stat_alpha / (len(p_vals) - np.asarray(range(1, len(p_vals) + 1)) + 1)
+    target_alphas_bonf = target_alphas_bonf[np.argsort(p_vals)]
 
-plt.plot(np.where(np.asarray(p_values) < target_alphas)[0], np.ones(np.sum(np.asarray(p_values) < target_alphas)), 'k.')
+    target_alphas = np.ones(len(p_vals)) * stat_alpha
 
-legend = plt.legend([label.replace('\n', ' | ') for label in labels] + ['1 way ANOVA uncorr p < .05'], loc='upper left')
-legend.set_title('mutation rate')
-plt.show()
+    plt.plot(np.where(np.asarray(p_vals) < target_alphas)[0], np.ones(np.sum(np.asarray(p_vals) < target_alphas)), 'k.')
+    plt.plot(np.where(np.asarray(p_vals) < target_alphas_bonf)[0], 4 * np.ones(np.sum(
+        np.asarray(p_vals) < target_alphas_bonf)), 'r.')
 
-plt.figure()
-plt.title('average distances for generation {}'.format(generation))
-plt.boxplot(plot_data_sel_gen, patch_artist=True, labels=labels)
-plt.ylabel('average distances')
-plt.xlabel('mutation rate')
-plt.show()
+    plt.title('mean and standard error for different mutation rates')
+    plt.ylabel('distance')
+    plt.xlabel('generation')
+    legend = plt.legend(
+        [label.replace('\n', ' | ') for label in labels[index[0]:index[1]]] + [
+            '1 way ANOVA uncorrected p < .05'] + ['1 way ANOVA stepwise Bonferroni p < .05'],
+        loc='upper left')
+    legend.set_title('mutation rate')
+    plt.gcf().subplots_adjust(bottom=0.175)
+    plt.show()
+    plt.savefig('result_plots' + sep + 'group_stats' + sep + 'line_plot_gen_{}_{}.png'.format(
+        generations, index[2]))
