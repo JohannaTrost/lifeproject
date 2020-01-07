@@ -1,4 +1,4 @@
-lifeproject
+lifprojet
 ===========
 
 .. toctree::
