@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>experiments.group_stats &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for experiments.group_stats</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">stats</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pylab</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">inspect</span>
+<span class="n">sep</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span>
+<span class="n">current_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">getfile</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">())))</span>
+<span class="n">parent_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">current_dir</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">parent_dir</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">src.IO</span> <span class="k">import</span> <span class="n">read_evo_config</span><span class="p">,</span> <span class="n">load_stats</span>
+
+
+<div class="viewcode-block" id="read_group_stats"><a class="viewcode-back" href="../../experiments.html#experiments.group_stats.read_group_stats">[docs]</a><span class="k">def</span> <span class="nf">read_group_stats</span><span class="p">(</span><span class="n">experiment_folder</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Collects data for precomputed experiments.</span>
+
+<span class="sd">    This function looks through the experiment folder and assumes each sub-directory being a different experiment.</span>
+<span class="sd">    Within each subdirectory, sub-subdirectories are assumed to represent trials. Within each trial folder the function</span>
+<span class="sd">    looks for the respective stats.csv and loads it. The result will be in form of a nested dictionary, where the first</span>
+<span class="sd">    level keys are the name of directory defined for each experiment and the second level for each trial. Hence it is</span>
+<span class="sd">    advisable to name experiment directories comprehensively and trial directories as increasing integers.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    experiment_folder : str</span>
+<span class="sd">        Path to directory where all experiments are stored.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    results : dict</span>
+<span class="sd">        Results of selected experiments. This is a nested dictionary, where the first level accepts keys according to</span>
+<span class="sd">        the name of the experiment (i.e. name of directory where it was stored) and on the second level the trial, which</span>
+<span class="sd">        again is the name of the directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># read statistics for multiple trial experiments</span>
+    <span class="n">experiments</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">experiment_folder</span><span class="p">))[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">experiment_sel</span> <span class="ow">in</span> <span class="n">experiments</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">experiment_sel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_&#39;</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">experiment_sel</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">trials</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">experiment_folder</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="n">experiment_sel</span><span class="p">))[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">trial_sel</span> <span class="ow">in</span> <span class="n">trials</span><span class="p">:</span>
+                <span class="n">curr_dir</span> <span class="o">=</span> <span class="n">experiment_folder</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="n">experiment_sel</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="n">trial_sel</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">results</span><span class="p">[</span><span class="n">experiment_sel</span><span class="p">][</span><span class="n">trial_sel</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_stats</span><span class="p">(</span><span class="n">curr_dir</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="s1">&#39;stats.csv&#39;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no group stats for </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">curr_dir</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../experiments.html#experiments.group_stats.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Main function to display and store group statistics.</span>
+
+<span class="sd">    Group statistics were precomputed on an HPC. For each experiment in `experiments` 30 trials were computed using the</span>
+<span class="sd">    respective ``.json`` configuration files. That is simulating 80 individuals per generation for 150 generations and</span>
+<span class="sd">    a simulation duration per individual of 40s.</span>
+
+<span class="sd">    This function transforms the results into plots, displays them and stores corresponding ``.png`` files in</span>
+<span class="sd">    `result_plots`. Files are read using :func:`experiments.group_stats.read_group_stats`.</span>
+
+<span class="sd">    To run this function use the command line and type:</span>
+
+<span class="sd">    ``python experiments/group_stats.py``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># select generations and significance level</span>
+    <span class="n">generations</span> <span class="o">=</span> <span class="mi">149</span>
+    <span class="n">stat_alpha</span> <span class="o">=</span> <span class="mf">0.05</span>
+
+    <span class="c1"># read stats from file</span>
+    <span class="n">group_stats</span> <span class="o">=</span> <span class="n">read_group_stats</span><span class="p">(</span><span class="n">current_dir</span><span class="p">)</span>
+
+    <span class="c1"># initialize result variables for plotting</span>
+    <span class="n">plot_data_sel_gen</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">plot_data_over_gen</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">experiment</span> <span class="ow">in</span> <span class="n">group_stats</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+        <span class="c1"># obtain config for labelling</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">read_evo_config</span><span class="p">(</span><span class="n">current_dir</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="n">experiment</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="s1">&#39;evo_config.json&#39;</span><span class="p">)</span>
+        <span class="n">results_exp_sel_gen</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">results_over_gen</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># collect data trial-wise</span>
+        <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">group_stats</span><span class="p">[</span><span class="n">experiment</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">results_exp_sel_gen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">group_stats</span><span class="p">[</span><span class="n">experiment</span><span class="p">][</span><span class="n">trial</span><span class="p">][</span><span class="n">generations</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">results_over_gen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">group_stats</span><span class="p">[</span><span class="n">experiment</span><span class="p">][</span><span class="n">trial</span><span class="p">])[:</span><span class="n">generations</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">plot_data_sel_gen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">results_exp_sel_gen</span><span class="p">)</span>
+        <span class="n">plot_data_over_gen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">results_over_gen</span><span class="p">)</span>
+        <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;I = </span><span class="si">{:.2f}</span><span class="se">\n</span><span class="s1">G = </span><span class="si">{:.2f}</span><span class="se">\n</span><span class="s1">F = </span><span class="si">{:.2f}</span><span class="se">\n</span><span class="s1">Sym = </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">config</span><span class="p">[</span><span class="s1">&#39;evolution&#39;</span><span class="p">][</span><span class="s1">&#39;mutation_prob_ind&#39;</span><span class="p">],</span>
+            <span class="n">config</span><span class="p">[</span><span class="s1">&#39;evolution&#39;</span><span class="p">][</span><span class="s1">&#39;mutation_prob_gene&#39;</span><span class="p">],</span>
+            <span class="n">config</span><span class="p">[</span><span class="s1">&#39;evolution&#39;</span><span class="p">][</span><span class="s1">&#39;mutation_prob_feature&#39;</span><span class="p">],</span>
+            <span class="n">config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;symmetric&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">0</span><span class="p">))</span>
+
+    <span class="c1"># box plots</span>
+    <span class="k">for</span> <span class="n">y_limit</span> <span class="ow">in</span> <span class="p">[(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">500</span><span class="p">)]:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">boxplot</span><span class="p">(</span><span class="n">plot_data_sel_gen</span><span class="p">,</span> <span class="n">patch_artist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;average distances for generation </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">generations</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;average distances&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;mutation rates &amp; symmetry&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="n">y_limit</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">bottom</span><span class="o">=</span><span class="mf">0.175</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span>
+            <span class="n">parent_dir</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="s1">&#39;result_plots&#39;</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="s1">&#39;group_stats&#39;</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="s1">&#39;box_plot_gen_</span><span class="si">{}</span><span class="s1">_both_sym_ylim_</span><span class="si">{}</span><span class="s1">.png&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">generations</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">()[</span><span class="mi">1</span><span class="p">])))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># line plots with standard error and significance index</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">plot_data_over_gen</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="s1">&#39;non_sym&#39;</span><span class="p">),</span>
+                  <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">plot_data_over_gen</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">plot_data_over_gen</span><span class="p">),</span> <span class="s1">&#39;sym&#39;</span><span class="p">)]:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">p_vals</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">f_oneway</span><span class="p">(</span><span class="o">*</span><span class="n">plot_data_over_gen</span><span class="p">[</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">this_plot</span> <span class="ow">in</span> <span class="n">plot_data_over_gen</span><span class="p">[</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">this_plot</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))),</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">this_plot</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">this_plot</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span> <span class="o">/</span> <span class="mi">30</span><span class="o">**</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">this_plot</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">this_plot</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span> <span class="o">/</span> <span class="mi">30</span><span class="o">**</span><span class="mf">0.5</span><span class="p">,</span>
+                             <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">this_plot</span> <span class="ow">in</span> <span class="n">plot_data_over_gen</span><span class="p">[</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">this_plot</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="c1"># Holm-Bonferroni correction</span>
+        <span class="n">target_alphas_bonf</span> <span class="o">=</span> <span class="n">stat_alpha</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">p_vals</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">p_vals</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">target_alphas_bonf</span> <span class="o">=</span> <span class="n">target_alphas_bonf</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">p_vals</span><span class="p">)]</span>
+
+        <span class="n">target_alphas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">p_vals</span><span class="p">))</span> <span class="o">*</span> <span class="n">stat_alpha</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">p_vals</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">target_alphas</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">p_vals</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">target_alphas</span><span class="p">)),</span> <span class="s1">&#39;k.&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">p_vals</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">target_alphas_bonf</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">p_vals</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">target_alphas_bonf</span><span class="p">)),</span> <span class="s1">&#39;r.&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;mean and standard error for different mutation rates&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;distance&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;generation&#39;</span><span class="p">)</span>
+        <span class="n">legend</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">label</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39; | &#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">[</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]]</span> <span class="o">+</span> <span class="p">[</span>
+                <span class="s1">&#39;1 way ANOVA uncorrected p &lt; .05&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;1 way ANOVA stepwise Bonferroni p &lt; .05&#39;</span><span class="p">],</span>
+            <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">)</span>
+        <span class="n">legend</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;mutation rate&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">bottom</span><span class="o">=</span><span class="mf">0.175</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="s1">&#39;result_plots&#39;</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="s1">&#39;group_stats&#39;</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="s1">&#39;line_plot_gen_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">.png&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">generations</span><span class="p">,</span> <span class="n">index</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">lifeproject</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,502 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>src.individual &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.individual</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">pybullet</span> <span class="k">as</span> <span class="nn">p</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<div class="viewcode-block" id="get_dist"><a class="viewcode-back" href="../../src.html#src.individual.get_dist">[docs]</a><span class="k">def</span> <span class="nf">get_dist</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Computes distance to starting position ([0, 0]).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ind_id : int</span>
+<span class="sd">        Index pointing to the multi body of the respective simulation.</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    distance : float</span>
+<span class="sd">        Distance to [0, 0]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">_get_pos</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">y</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span></div>
+
+
+<span class="k">def</span> <span class="nf">_compute_force</span><span class="p">(</span><span class="n">mass</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Computes force for a given mass.</span>
+
+<span class="sd">    With increasing size, mass increases as well. To ensure box sizes cannot grow arbitrarily, the force per mass</span>
+<span class="sd">    increases sigmoid to a certain ceiling. After passing this ceiling, increasing mass will not likewise lead to</span>
+<span class="sd">    increased force and thus makes it harder for the individual to move.</span>
+
+<span class="sd">    Minimum and maximum force are defined in the evolution configuration.</span>
+
+<span class="sd">    Assumes a standard mass of 1. Scales the force sigmoid according to the box size. Scales roughly around</span>
+<span class="sd">    force = mass * 150 centering around mass = 2, f(mass) = 300</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mass : float</span>
+<span class="sd">        Mass used to compute the force.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    force : float</span>
+<span class="sd">        Force computed via a sigmoid function. With increasing mass force increases, but only until a ceiling is</span>
+<span class="sd">        reached. This ceiling is defined by evo_config[&#39;individuals&#39;][&#39;max_force&#39;]. When mass further increases, force</span>
+<span class="sd">        will not increase anymore and thus act as a penalty for too high masses (i.e. too large sizes).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">max_force</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;max_force&#39;</span><span class="p">]</span>
+    <span class="n">min_force</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;min_force&#39;</span><span class="p">]</span>
+    <span class="n">max_force</span> <span class="o">=</span> <span class="n">max_force</span> <span class="o">-</span> <span class="n">min_force</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">max_force</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">mass</span> <span class="o">*</span> <span class="mi">3</span><span class="p">))</span> <span class="o">+</span> <span class="n">min_force</span>
+
+
+<span class="k">def</span> <span class="nf">_compute_mass</span><span class="p">(</span><span class="n">box_size</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Computes the mass given a certain box size.</span>
+
+<span class="sd">    Mass will be scaled with the volume, normalized on the standard volume. The standard volume is the average volume</span>
+<span class="sd">    obtained from: np.random.rand(3) / 2 + 0.4, which is the starting box size. Hence this box size will have a volume</span>
+<span class="sd">    of (0.5 / 2 + 0.4)**3 and thus a normalized mass of (0.5 / 2 + 0.4)**3 / standard_volume = 1</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    box_size : list | np.array of length 3 (x, y, z)</span>
+<span class="sd">        Size of the box for which to compute the mass. All three dimensions must be given in &quot;half extend&quot;, which is</span>
+<span class="sd">        half the size in each dimension.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mass : float</span>
+<span class="sd">        Normalized mass.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ensure format</span>
+    <span class="n">standard_volume</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;standard_volume&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">box_size</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">box_size</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># sphere</span>
+            <span class="n">box_size</span> <span class="o">=</span> <span class="n">box_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">box_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">box_size</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">box_size</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># sphere</span>
+        <span class="k">return</span> <span class="mi">4</span> <span class="o">/</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">box_size</span><span class="o">**</span><span class="mi">3</span> <span class="o">/</span> <span class="n">standard_volume</span>
+    <span class="k">else</span><span class="p">:</span>  <span class="c1"># box</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">ndim</span><span class="p">(</span><span class="n">box_size</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">box_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">standard_volume</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">box_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">standard_volume</span>
+
+
+<span class="k">def</span> <span class="nf">_get_pos</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get current head position of individual.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ind_id : int</span>
+<span class="sd">        Index pointing to the multi body of the respective simulation.</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    x : float</span>
+<span class="sd">        X coordinate of the head.</span>
+<span class="sd">    y : float</span>
+<span class="sd">        Y coordinate of the head.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># get current position of &#39;head&#39;</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">getBasePositionAndOrientation</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span>
+
+
+<span class="k">def</span> <span class="nf">_make_limb_dict</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Create controller dictionary translating each limb id into human readable format.</span>
+
+<span class="sd">    In order to control the individual, joint IDs are required. For easier code comprehension those are stored in human</span>
+<span class="sd">    readable format as a dictionary.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    limb_dict : dict</span>
+<span class="sd">        Dictionary containing the joint IDs of the multi body.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;left_arm_y&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;right_arm_y&#39;</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span>
+            <span class="s1">&#39;left_arm_z&#39;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span> <span class="s1">&#39;right_arm_z&#39;</span><span class="p">:</span> <span class="mi">14</span><span class="p">,</span>
+            <span class="s1">&#39;left_leg_y&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;right_leg_y&#39;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+            <span class="s1">&#39;left_leg_z&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;right_leg_z&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+            <span class="s1">&#39;hip_y&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;hip_x&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">_move_individual</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">genome</span><span class="p">,</span> <span class="n">move_step</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Moves all limbs of a given individual by one step.</span>
+
+<span class="sd">    Wrapper function to move all limbs of a given individual at once.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ind_id : int</span>
+<span class="sd">        Index pointing to the multi body of the respective simulation.</span>
+<span class="sd">    genome : dict</span>
+<span class="sd">        Genome of the current individual.</span>
+<span class="sd">    move_step : int</span>
+<span class="sd">        Current step. Since each move pattern is a vector of steps, move_step selects the current step. A modulo</span>
+<span class="sd">        operation is applied to ensure proper step selection, once all steps are used. This renders the move pattern</span>
+<span class="sd">        &quot;circular&quot;.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># move each limb of the individual one step</span>
+    <span class="n">limb_dict</span> <span class="o">=</span> <span class="n">_make_limb_dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">limb_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">_move_limb</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">limb_dict</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">genome</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="n">move_step</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">key</span><span class="p">])],</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_move_limb</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">limb</span><span class="p">,</span> <span class="n">target_pos</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Moves a single limb of a given individual by one step.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ind_id : int</span>
+<span class="sd">        Index pointing to the multi body of the respective simulation.</span>
+<span class="sd">    limb : int</span>
+<span class="sd">        Index pointing to the joint of the multi body.</span>
+<span class="sd">    target_pos : float</span>
+<span class="sd">        Target position of the joint motor in multiples of pi.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># move specific limb motor to target position</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">changeDynamics</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">limb</span><span class="p">,</span> <span class="n">lateralFriction</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">anisotropicFriction</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+
+    <span class="n">box_size</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">getCollisionShapeData</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">limb</span><span class="p">,</span>
+                                       <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">getCollisionShapeData</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span> <span class="n">limb</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># type of object (2 = sphere)</span>
+        <span class="n">box_size</span> <span class="o">=</span> <span class="n">box_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">p</span><span class="o">.</span><span class="n">setJointMotorControl2</span><span class="p">(</span><span class="n">ind_id</span><span class="p">,</span>
+                            <span class="n">limb</span><span class="p">,</span>
+                            <span class="n">p</span><span class="o">.</span><span class="n">POSITION_CONTROL</span><span class="p">,</span>
+                            <span class="n">targetPosition</span><span class="o">=</span><span class="n">target_pos</span><span class="p">,</span>
+                            <span class="n">force</span><span class="o">=</span><span class="n">_compute_force</span><span class="p">(</span><span class="n">_compute_mass</span><span class="p">(</span><span class="n">box_size</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">),</span> <span class="n">evo_config</span><span class="p">),</span>
+                            <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_move_pattern_size</span><span class="p">(</span><span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initialize the size of the movement pattern obtained from the evolution configuration.</span>
+
+<span class="sd">    If specified in the evolution configuration, the size can vary by +- 50% randomly.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pattern_length : int</span>
+<span class="sd">        Defines the length of the movement pattern.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">pattern_length</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;start_move_pattern_size&#39;</span><span class="p">]</span>
+    <span class="n">vary_pattern_length</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;vary_pattern_length&#39;</span><span class="p">]</span>
+
+    <span class="c1"># compute size of movement pattern (jitter of +- 50%)</span>
+    <span class="k">if</span> <span class="n">vary_pattern_length</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">pattern_length</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.5</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pattern_length</span>
+
+
+<span class="k">def</span> <span class="nf">_make_move_pattern</span><span class="p">(</span><span class="n">limb_dict</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initializes a random start movement pattern.</span>
+
+<span class="sd">    Randomly initializes a movement pattern by selecting values between +- pi. If specified the movement pattern can be</span>
+<span class="sd">    normalized. In case so, it will be ensured, that the absolute values of all steps within the pattern sum up to 2 pi.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    limb_dict : dict</span>
+<span class="sd">        Dictionary containing the joint IDs of the multi body.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    move_dict : dict</span>
+<span class="sd">        Dictionary containing the movement pattern for all limbs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># create random movement pattern</span>
+    <span class="n">move_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">limb_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">limb_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">move_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">_move_pattern_size</span><span class="p">(</span><span class="n">evo_config</span><span class="p">))</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+
+        <span class="c1"># rescale step sizes to make the absolute values summing up to 2 pi</span>
+        <span class="k">if</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;normalize_move_pattern&#39;</span><span class="p">]:</span>
+            <span class="n">move_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">_normalize_move_pattern</span><span class="p">(</span><span class="n">move_dict</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">move_dict</span>
+
+
+<span class="k">def</span> <span class="nf">_normalize_move_pattern</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">,</span> <span class="n">max_val</span><span class="o">=</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Normalizes movement patterns to ensure all absolute values of all steps sum up to a maximum value.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    move_pattern : list | np.array</span>
+<span class="sd">        Vector containing all movement steps in multiples of pi.</span>
+<span class="sd">    max_val : float</span>
+<span class="sd">        Maximum value to which all absolute values will sum up to.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    move_pattern : np.array</span>
+<span class="sd">        Normalized movement pattern.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">move_pattern</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">))</span> <span class="o">*</span> <span class="n">max_val</span>
+
+
+<span class="k">def</span> <span class="nf">_interpolate_move_pattern</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">,</span> <span class="n">new_size</span><span class="p">,</span> <span class="n">min_size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Interpolates movement pattern to fit a given size.</span>
+
+<span class="sd">    Linearly interpolates all values in move_pattern to fit a certain vector length.</span>
+
+<span class="sd">    If move pattern is longer than new_size, it cannot be interpolated in the classical sense (i.e. it has to be</span>
+<span class="sd">    extrapolated). We have to find a common multiple to extent the size, in order to reslice it properly later.</span>
+<span class="sd">    However, in order to ensure that we keep the first and last value in the vector untouched, we have to add 1 and</span>
+<span class="sd">    subtract len(move_pattern). Doing as described will yield a new vector of size new_size, with the first and last</span>
+<span class="sd">    value in move_pattern untouched, whereas values in between are interpolated according to the standard procedure.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    move_pattern : list | np.array</span>
+<span class="sd">        Vector containing all movement steps in multiples of pi.</span>
+<span class="sd">    new_size : int</span>
+<span class="sd">        New length of the vector move_pattern.</span>
+<span class="sd">    min_size : int</span>
+<span class="sd">        Minimum length of the vector move_pattern.</span>
+<span class="sd">    max_size : int</span>
+<span class="sd">        Maximum length of the vector move_pattern.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    interpolated_move_pattern : np.array</span>
+<span class="sd">        Interpolated movement pattern.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># interpolate movement pattern to fit a certain size by linear interpolation</span>
+    <span class="k">if</span> <span class="n">new_size</span> <span class="o">&lt;</span> <span class="n">min_size</span><span class="p">:</span>
+        <span class="n">new_size</span> <span class="o">=</span> <span class="n">min_size</span>
+    <span class="k">elif</span> <span class="n">new_size</span> <span class="o">&gt;</span> <span class="n">max_size</span><span class="p">:</span>
+        <span class="n">new_size</span> <span class="o">=</span> <span class="n">max_size</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">new_size</span><span class="p">:</span>
+        <span class="n">int_size</span> <span class="o">=</span> <span class="n">new_size</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">int_size</span> <span class="o">=</span> <span class="n">new_size</span>
+
+    <span class="c1"># linear interpolation</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">))</span>
+    <span class="n">new_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">),</span> <span class="n">int_size</span><span class="p">)</span>
+    <span class="n">interpolated_move_pattern</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">new_x</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">move_pattern</span><span class="p">)</span>
+
+    <span class="c1"># in the above described case, we have to reslice the enlarged vector.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">new_size</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">interpolated_move_pattern</span><span class="p">[::</span><span class="nb">len</span><span class="p">(</span><span class="n">move_pattern</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">interpolated_move_pattern</span>
+
+
+<span class="k">def</span> <span class="nf">_make_size_dict</span><span class="p">(</span><span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create box size dictionary translating each limb size into human readable format.</span>
+
+<span class="sd">    Box sizes are initialized random within a range defined in the evolution configuration. Furthermore, if selected,</span>
+<span class="sd">    sizes of limbs can be symmetric. If no random selection was defined, a fixed box size is computed (i.e. the average</span>
+<span class="sd">    between the minimum and maximum value defined in the evolution configuration).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    size_dict : dict</span>
+<span class="sd">        Dictionary storing all sizes of all boxes of a given individual.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># get default variables from config</span>
+    <span class="n">min_size</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;min_box_size&#39;</span><span class="p">]</span>
+    <span class="n">max_size</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;max_box_size&#39;</span><span class="p">]</span>
+    <span class="n">is_random</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;random_box_size&#39;</span><span class="p">]</span>
+    <span class="n">symmetric</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;symmetric&#39;</span><span class="p">]</span>
+
+    <span class="c1"># make random sizes for each box</span>
+    <span class="n">size_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;left_hand&#39;</span><span class="p">,</span> <span class="s1">&#39;right_hand&#39;</span><span class="p">,</span> <span class="s1">&#39;left_foot&#39;</span><span class="p">,</span> <span class="s1">&#39;right_foot&#39;</span><span class="p">,</span> <span class="s1">&#39;chest&#39;</span><span class="p">,</span> <span class="s1">&#39;hip&#39;</span><span class="p">]}</span>
+
+    <span class="k">for</span> <span class="n">size_key</span> <span class="ow">in</span> <span class="n">size_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+        <span class="c1"># if symmetric, we can skip the computation for the other limb</span>
+        <span class="k">if</span> <span class="n">symmetric</span> <span class="ow">and</span> <span class="s1">&#39;right_hand&#39;</span> <span class="o">==</span> <span class="n">size_key</span> <span class="ow">and</span> <span class="n">size_dict</span><span class="p">[</span><span class="s1">&#39;left_hand&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">size_dict</span><span class="p">[</span><span class="n">size_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">size_dict</span><span class="p">[</span><span class="s1">&#39;left_hand&#39;</span><span class="p">]</span>
+            <span class="k">continue</span>
+        <span class="k">elif</span> <span class="n">symmetric</span> <span class="ow">and</span> <span class="s1">&#39;left_hand&#39;</span> <span class="o">==</span> <span class="n">size_key</span> <span class="ow">and</span> <span class="n">size_dict</span><span class="p">[</span><span class="s1">&#39;right_hand&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">size_dict</span><span class="p">[</span><span class="n">size_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">size_dict</span><span class="p">[</span><span class="s1">&#39;right_hand&#39;</span><span class="p">]</span>
+            <span class="k">continue</span>
+        <span class="k">elif</span> <span class="n">symmetric</span> <span class="ow">and</span> <span class="s1">&#39;left_foot&#39;</span> <span class="o">==</span> <span class="n">size_key</span> <span class="ow">and</span> <span class="n">size_dict</span><span class="p">[</span><span class="s1">&#39;right_foot&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">size_dict</span><span class="p">[</span><span class="n">size_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">size_dict</span><span class="p">[</span><span class="s1">&#39;right_foot&#39;</span><span class="p">]</span>
+            <span class="k">continue</span>
+        <span class="k">elif</span> <span class="n">symmetric</span> <span class="ow">and</span> <span class="s1">&#39;right_foot&#39;</span> <span class="o">==</span> <span class="n">size_key</span> <span class="ow">and</span> <span class="n">size_dict</span><span class="p">[</span><span class="s1">&#39;left_foot&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">size_dict</span><span class="p">[</span><span class="n">size_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">size_dict</span><span class="p">[</span><span class="s1">&#39;left_foot&#39;</span><span class="p">]</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># make 3 values according to the selected policy</span>
+        <span class="k">if</span> <span class="n">is_random</span><span class="p">:</span>
+            <span class="n">limb_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">max_size</span> <span class="o">-</span> <span class="n">min_size</span><span class="p">)</span> <span class="o">+</span> <span class="n">min_size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">limb_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([(</span><span class="n">max_size</span> <span class="o">+</span> <span class="n">min_size</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span><span class="p">)</span>
+
+        <span class="n">size_dict</span><span class="p">[</span><span class="n">size_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">limb_size</span>
+
+    <span class="k">return</span> <span class="n">size_dict</span>
+
+
+<span class="k">def</span> <span class="nf">_make_random_genome</span><span class="p">(</span><span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a random genome</span>
+
+<span class="sd">    A genome consists of genes for sizes and movement patterns as well as the evolution configuration. Thus this</span>
+<span class="sd">    function is a wrapper to return the aforementioned.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    size_dict : dict</span>
+<span class="sd">        Dictionary storing all sizes of all boxes of a given individual.</span>
+<span class="sd">    move_dict : dict</span>
+<span class="sd">        Dictionary containing the movement pattern for all limbs.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># create random genome by creating chromosomes for box size and movement</span>
+    <span class="k">return</span> <span class="n">_make_size_dict</span><span class="p">(</span><span class="n">evo_config</span><span class="p">),</span> <span class="n">_make_move_pattern</span><span class="p">(</span><span class="n">_make_limb_dict</span><span class="p">(),</span> <span class="n">evo_config</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">lifeproject</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

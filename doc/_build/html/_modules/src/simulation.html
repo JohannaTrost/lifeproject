@@ -1,0 +1,616 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>src.simulation &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.simulation</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">pybullet</span> <span class="k">as</span> <span class="nn">p</span>
+<span class="kn">from</span> <span class="nn">src.individual</span> <span class="k">import</span> <span class="n">_move_individual</span><span class="p">,</span> <span class="n">_make_random_genome</span><span class="p">,</span> <span class="n">_get_pos</span><span class="p">,</span> <span class="n">_compute_mass</span>
+<span class="kn">from</span> <span class="nn">src.evolution</span> <span class="k">import</span> <span class="n">fitness</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="k">import</span> <span class="n">cm</span>
+<span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="n">unsorted_result</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+<div class="viewcode-block" id="remove_simulation"><a class="viewcode-back" href="../../src.html#src.simulation.remove_simulation">[docs]</a><span class="k">def</span> <span class="nf">remove_simulation</span><span class="p">(</span><span class="n">pop</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Removes all object from simulation and disconnects from physics server.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pop : list</span>
+<span class="sd">        List of ind_ids for multiple individuals.</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># remove all bodies and reset simulation</span>
+    <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">removeBody</span><span class="p">(</span><span class="n">ind</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">ind</span> <span class="ow">in</span> <span class="n">pop</span><span class="p">]</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">resetSimulation</span><span class="p">(</span><span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">disconnect</span><span class="p">(</span><span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="worker"><a class="viewcode-back" href="../../src.html#src.simulation.worker">[docs]</a><span class="k">def</span> <span class="nf">worker</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Worker function for parallel processing of simulations.</span>
+
+<span class="sd">    Output will be put into static, shared object defined elsewhere.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    args : list | tuple</span>
+<span class="sd">        ``args[0]`` is the index of the worker</span>
+
+<span class="sd">        ``args[1]`` is the gene pool (part)</span>
+
+<span class="sd">        ``args[2]`` is the evolution configuration</span>
+
+<span class="sd">        ``args[3]`` is a boolean value indicating whether to track individual&#39;s paths</span>
+
+<span class="sd">        ``args[4]`` is the shared queue were data is appended (only for windows)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pop</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">,</span> <span class="n">tracker</span> <span class="o">=</span> <span class="n">simulate_pop</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">track_individuals</span><span class="o">=</span><span class="n">args</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">direct</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                        <span class="n">sim_id</span><span class="o">=</span><span class="n">_make_sim_env</span><span class="p">(</span><span class="s1">&#39;direct&#39;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
+        <span class="n">args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fitness</span><span class="p">(</span><span class="n">pop</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">),</span> <span class="n">tracker</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">unsorted_result</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fitness</span><span class="p">(</span><span class="n">pop</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">),</span> <span class="n">tracker</span><span class="p">])</span>
+    <span class="n">remove_simulation</span><span class="p">(</span><span class="n">pop</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="simulate_multi_core"><a class="viewcode-back" href="../../src.html#src.simulation.simulate_multi_core">[docs]</a><span class="k">def</span> <span class="nf">simulate_multi_core</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">track_individuals</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_cores</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Performs direct simulation on multiple CPU cores.</span>
+
+<span class="sd">    .. note:: Note that due to different system architectures this function works differently on windows and unix-oid</span>
+<span class="sd">              systems.</span>
+
+<span class="sd">    To use multi core processing, we exploit the fact, that individuals can be simulated independently. Thus the gene</span>
+<span class="sd">    pool is split into mostly evenly sized parts and for each part the simulation is run on a separate CPU core.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    gene_pool : list</span>
+<span class="sd">        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation.</span>
+<span class="sd">    track_individuals : bool</span>
+<span class="sd">        Whether to collect position data for all individuals.</span>
+<span class="sd">    num_cores : int</span>
+<span class="sd">        Number of CPU cores used for the simulation. If -1, all available cores will be utilized.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fitness_all : list</span>
+<span class="sd">        List of fitness values for all individuals after merging results.</span>
+<span class="sd">    tracker_all : dict</span>
+<span class="sd">        Paths recorded for each individual. Key values represent individual IDs within the simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">global</span> <span class="n">unsorted_result</span>
+    <span class="c1"># perform simulation using multiprocessing library (on multiple CPU cores) by splitting the amount of individuals</span>
+    <span class="c1"># into as many chunks as CPU cores were requested</span>
+
+    <span class="c1"># split gene pool into num_cores chunks and compute in parallel pools</span>
+    <span class="n">split_gene_pool</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_split</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">),</span> <span class="n">num_cores</span><span class="p">)</span>
+
+    <span class="c1"># multiprocessing on windows works slightly different than on unix. To ensure compatibility two different ways of</span>
+    <span class="c1"># multi processing were implemented.</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
+        <span class="c1"># make multiprocessing queue</span>
+        <span class="n">q_out</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># make parallel processes</span>
+        <span class="n">processes</span> <span class="o">=</span> <span class="p">[</span><span class="n">mp</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">worker</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">([</span><span class="n">ind</span><span class="p">,</span> <span class="n">data_in</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">track_individuals</span><span class="p">,</span> <span class="n">q_out</span><span class="p">],</span> <span class="p">))</span>
+                     <span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">data_in</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">split_gene_pool</span><span class="p">)]</span>
+
+        <span class="c1"># start parallel processes</span>
+        <span class="k">for</span> <span class="n">process</span> <span class="ow">in</span> <span class="n">processes</span><span class="p">:</span>
+            <span class="n">process</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="n">unsorted_result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># get data from queue on the fly to avoid overflow</span>
+        <span class="k">while</span> <span class="nb">any</span><span class="p">([</span><span class="n">process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">()</span> <span class="k">for</span> <span class="n">process</span> <span class="ow">in</span> <span class="n">processes</span><span class="p">]):</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">q_out</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+                <span class="n">unsorted_result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">q_out</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">))</span>
+
+    <span class="c1"># for unix-oid systems</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Manager</span><span class="p">()</span>
+        <span class="n">unsorted_result</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">processes</span><span class="o">=</span><span class="n">num_cores</span><span class="p">)</span>
+        <span class="n">pool</span><span class="o">.</span><span class="n">imap_unordered</span><span class="p">(</span><span class="n">worker</span><span class="p">,</span> <span class="p">[[</span><span class="n">ind</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">track_individuals</span><span class="p">]</span>
+                                     <span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">split_gene_pool</span><span class="p">)])</span>
+        <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+    <span class="c1"># since incoming results are not sorted due to different run times of the processes, sort them</span>
+    <span class="n">sorted_fitness</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">unsorted_result</span><span class="p">)]</span>
+    <span class="n">sorted_tracker</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">unsorted_result</span><span class="p">)]</span>
+
+    <span class="c1"># make fitness output</span>
+    <span class="n">fitness_all</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># fitness all accumulates all results to one single list such that the distinction between cores is not made anymore</span>
+    <span class="k">for</span> <span class="n">sub_pop</span> <span class="ow">in</span> <span class="n">sorted_fitness</span><span class="p">:</span>
+        <span class="n">fitness_all</span> <span class="o">+=</span> <span class="n">sub_pop</span>
+
+    <span class="c1"># make tracker output</span>
+    <span class="n">tracker_all</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">sub_pop</span> <span class="ow">in</span> <span class="n">sorted_tracker</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">sub_pop</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">tracker_all</span><span class="p">[</span><span class="n">counter</span><span class="p">]</span> <span class="o">=</span> <span class="n">sub_pop</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">fitness_all</span><span class="p">,</span> <span class="n">tracker_all</span></div>
+
+
+<div class="viewcode-block" id="simulate_pop"><a class="viewcode-back" href="../../src.html#src.simulation.simulate_pop">[docs]</a><span class="k">def</span> <span class="nf">simulate_pop</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">track_individuals</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sim_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Genomes for multiple individuals are converted into multi bodies and simulated using `pybullet`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    gene_pool : list</span>
+<span class="sd">        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    args : argparse.Namespace</span>
+<span class="sd">        Parsed arguments.</span>
+<span class="sd">    direct : bool</span>
+<span class="sd">        Whether to use direct or GUI based simulation.</span>
+<span class="sd">    track_individuals : bool</span>
+<span class="sd">        Whether to collect position data for all individuals.</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pop : list</span>
+<span class="sd">        List of ind_ids for multiple individuals.</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+<span class="sd">    tracker : dict</span>
+<span class="sd">        Paths recorded for each individual. Key values represent individual IDs within the simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># simulate all individuals of one generation</span>
+    <span class="k">if</span> <span class="n">sim_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">direct</span><span class="p">:</span>
+            <span class="n">sim_id</span> <span class="o">=</span> <span class="n">_make_sim_env</span><span class="p">(</span><span class="s1">&#39;direct&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sim_id</span> <span class="o">=</span> <span class="n">_make_sim_env</span><span class="p">(</span><span class="s1">&#39;gui&#39;</span><span class="p">)</span>
+
+    <span class="c1"># create multi body IDs for all individuals in pop (given by gene in gene pool)</span>
+    <span class="n">pop</span> <span class="o">=</span> <span class="p">[</span><span class="n">_genome2simulation</span><span class="p">(</span><span class="n">sim_id</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">genome</span><span class="p">)</span> <span class="k">for</span> <span class="n">genome</span> <span class="ow">in</span> <span class="n">gene_pool</span><span class="p">]</span>
+    <span class="n">_disable_collision</span><span class="p">(</span><span class="n">sim_id</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+    <span class="n">duration_steps</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;fps&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;duration&#39;</span><span class="p">]</span>
+
+    <span class="c1"># wrap some arguments from argument parser</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">args</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">slow_factor</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">slow_down_factor</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">duration</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">duration_steps</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">duration</span> <span class="o">*</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;fps&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">slow_factor</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="n">duration_steps</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">duration_steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">Inf</span>
+
+    <span class="c1"># actual simulation</span>
+    <span class="n">tracker</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">follow_indiv</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">while</span> <span class="n">p</span><span class="o">.</span><span class="n">isConnected</span><span class="p">(</span><span class="n">sim_id</span><span class="p">)</span> <span class="ow">and</span> <span class="n">step</span> <span class="o">&lt;</span> <span class="n">duration_steps</span><span class="p">:</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">stepSimulation</span><span class="p">(</span><span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+
+        <span class="c1"># move all limbs</span>
+        <span class="k">for</span> <span class="n">indiv</span><span class="p">,</span> <span class="n">genome</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pop</span><span class="p">,</span> <span class="n">gene_pool</span><span class="p">):</span>
+            <span class="n">_move_individual</span><span class="p">(</span><span class="n">indiv</span><span class="p">,</span> <span class="n">genome</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">)</span>
+
+            <span class="c1"># record x and y position every 10th step to avoid memory overflow</span>
+            <span class="k">if</span> <span class="n">track_individuals</span> <span class="ow">and</span> <span class="n">step</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">_get_pos</span><span class="p">(</span><span class="n">indiv</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">indiv</span> <span class="ow">in</span> <span class="n">tracker</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">tracker</span><span class="p">[</span><span class="n">indiv</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">tracker</span><span class="p">[</span><span class="n">indiv</span><span class="p">]</span> <span class="o">=</span> <span class="p">[[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]]</span>
+
+        <span class="c1"># set camera position to position of first individual in pop</span>
+        <span class="k">if</span> <span class="n">args</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">follow_target</span><span class="p">:</span>
+                <span class="n">target</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">getBasePositionAndOrientation</span><span class="p">(</span><span class="n">follow_indiv</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>  <span class="c1"># x, y, z</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">resetDebugVisualizerCamera</span><span class="p">(</span><span class="n">cameraDistance</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">cameraYaw</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">cameraPitch</span><span class="o">=-</span><span class="mi">52</span><span class="p">,</span>
+                                             <span class="n">cameraTargetPosition</span><span class="o">=</span><span class="n">target</span><span class="p">)</span>
+
+        <span class="c1"># for GUI only</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">direct</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.</span> <span class="o">/</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;fps&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">slow_factor</span><span class="p">)</span>
+        <span class="n">step</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">pop</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">,</span> <span class="n">tracker</span></div>
+
+
+<span class="k">def</span> <span class="nf">_make_sim_env</span><span class="p">(</span><span class="n">gui_or_direct</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates simuation environment for a simulation.</span>
+
+<span class="sd">    A new physics server is created and default settings like gravity and a world plane are initialized.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    gui_or_direct : str</span>
+<span class="sd">        Indicating whether a direct or GUI based simulation is requested.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># make simulation environment</span>
+    <span class="k">if</span> <span class="n">gui_or_direct</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;gui&#39;</span><span class="p">:</span>
+        <span class="n">sim_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GUI</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sim_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">DIRECT</span><span class="p">)</span>
+
+    <span class="c1"># gravity -10 to make simulation computationally easier</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">setGravity</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+
+    <span class="c1"># surface</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">createMultiBody</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">createCollisionShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_PLANE</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">),</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sim_id</span>
+
+
+<span class="k">def</span> <span class="nf">_get_start_height</span><span class="p">(</span><span class="n">genome</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Computes the z value in order to initially place the individual at the start of a simulation.</span>
+
+<span class="sd">    This is necessary because individuals can vary in box sizes. To avoid glitching due to placement in the world plane</span>
+<span class="sd">    the start height must be appropriate. However it cannot be too high because the individual would loose time falling</span>
+<span class="sd">    down for the first steps of the simulation.</span>
+
+<span class="sd">    The function searches for the largest z size of all boxes, adds a little extra and returns the value.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    genome : list | tuple</span>
+<span class="sd">        Genome containing dictionaries for size, move pattern and evolution configuration. The first list entry are</span>
+<span class="sd">        genes for box sizes.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    height : float</span>
+<span class="sd">        Maximum box size + 0.1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># get z coordinate for each body part</span>
+    <span class="n">height</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">height</span><span class="p">:</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">height</span> <span class="o">+</span> <span class="mf">0.1</span>
+
+
+<span class="k">def</span> <span class="nf">_make_mb_dict</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Creates default multi body dictionary.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mb_dict : dict</span>
+<span class="sd">        Dictionary to store all default parameters of the multi body, serving as a template for each individual.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># setup base dictionary for multi body</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;link_masses&#39;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s1">&#39;link_col_shape_ids&#39;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s1">&#39;link_vis_shape_ids&#39;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s1">&#39;link_pos&#39;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s1">&#39;link_ori&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                         <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                         <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                         <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                         <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span>
+            <span class="s1">&#39;link_iner_frame_pos&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span> <span class="o">*</span> <span class="mi">16</span><span class="p">,</span>
+            <span class="s1">&#39;link_iner_frame_ori&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span> <span class="o">*</span> <span class="mi">16</span><span class="p">,</span>
+            <span class="s1">&#39;inds&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">],</span>
+            <span class="s1">&#39;joint_types&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">JOINT_FIXED</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_FIXED</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span>
+                            <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span>
+                            <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_REVOLUTE</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_FIXED</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_FIXED</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">JOINT_FIXED</span><span class="p">,</span>
+                            <span class="n">p</span><span class="o">.</span><span class="n">JOINT_FIXED</span><span class="p">],</span>
+            <span class="s1">&#39;axis&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span> <span class="o">*</span> <span class="mi">16</span><span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">_get_random_color</span><span class="p">(</span><span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns a random color from a given colormap.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    color : list</span>
+<span class="sd">        Rgba color value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># create colormap to color individuals such that they fit a certain scheme</span>
+    <span class="n">c_map</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;colormap&#39;</span><span class="p">],</span> <span class="mi">255</span><span class="p">)(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">255</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">c_map</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random_integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">254</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_genome2multi_body_data</span><span class="p">(</span><span class="n">sim_id</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">genome</span><span class="o">=</span><span class="p">({},</span> <span class="p">{})):</span>
+    <span class="sd">&quot;&quot;&quot;Converts genome data into pybullet compatible multi body data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    genome : list | tuple</span>
+<span class="sd">        Genome containing dictionaries for size, move pattern and evolution configuration. The first list entry are</span>
+<span class="sd">        genes for box sizes.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mb : dict</span>
+<span class="sd">        Multi body data as dictionary.</span>
+<span class="sd">    col_sphere_id_chest : int</span>
+<span class="sd">        Index for collision shape for sphere forming the chest of the individual.</span>
+<span class="sd">    vis_sphere_id_chest : int</span>
+<span class="sd">        Index for visual shape for sphere forming the chest of the individual.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># create multi body data from genome</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">bool</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">genome</span> <span class="o">=</span> <span class="n">_make_random_genome</span><span class="p">(</span><span class="n">evo_config</span><span class="p">)</span>
+
+    <span class="n">col_box_ids</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">vis_box_ids</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">box_color</span> <span class="o">=</span> <span class="n">_get_random_color</span><span class="p">(</span><span class="n">evo_config</span><span class="p">)</span>
+    <span class="n">sphere_color</span> <span class="o">=</span> <span class="p">[</span><span class="n">sphere_color</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="k">for</span> <span class="n">sphere_color</span> <span class="ow">in</span> <span class="n">box_color</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">+</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># generate visual/ collision shape ids for objects with &#39;new&#39; sizes</span>
+    <span class="k">for</span> <span class="n">limb</span> <span class="ow">in</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">col_box_ids</span><span class="p">[</span><span class="n">limb</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createCollisionShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_BOX</span><span class="p">,</span> <span class="n">halfExtents</span><span class="o">=</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">limb</span><span class="p">],</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+        <span class="n">vis_box_ids</span><span class="p">[</span><span class="n">limb</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createVisualShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_BOX</span><span class="p">,</span> <span class="n">halfExtents</span><span class="o">=</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">limb</span><span class="p">],</span>
+                                                <span class="n">rgbaColor</span><span class="o">=</span><span class="n">box_color</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+
+    <span class="c1"># for all spheres connected to the chest take z value of chest box as radius</span>
+    <span class="n">vis_sphere_id_chest</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createVisualShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_SPHERE</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span>
+                                              <span class="n">rgbaColor</span><span class="o">=</span><span class="n">sphere_color</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+    <span class="n">col_sphere_id_chest</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createCollisionShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_SPHERE</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+    <span class="c1"># analog for hip</span>
+    <span class="n">vis_sphere_id_hip</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createVisualShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_SPHERE</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">rgbaColor</span><span class="o">=</span><span class="n">sphere_color</span><span class="p">,</span>
+                                            <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+    <span class="n">col_sphere_id_hip</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createCollisionShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_SPHERE</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+
+    <span class="c1"># fill multi body parameter values</span>
+    <span class="n">mb</span> <span class="o">=</span> <span class="n">_make_mb_dict</span><span class="p">()</span>
+
+    <span class="c1"># start height is largest z-size of all limbs</span>
+    <span class="n">mb</span><span class="p">[</span><span class="s1">&#39;start_height&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_get_start_height</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>
+
+    <span class="c1"># masses vary with volume. Means they have to be computed for each limb separately</span>
+    <span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_masses&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">),</span>
+                         <span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">),</span>
+                         <span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">),</span>
+                         <span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">)]</span> <span class="o">+</span> \
+                        <span class="p">[</span><span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">)]</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> \
+                        <span class="p">[</span><span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">)]</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> \
+                        <span class="p">[</span><span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;left_hand&#39;</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">),</span>
+                         <span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;right_hand&#39;</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">),</span>
+                         <span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;left_foot&#39;</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">),</span>
+                         <span class="n">_compute_mass</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;right_foot&#39;</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">)]</span>
+
+    <span class="c1"># assign collision and visual shape ids</span>
+    <span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_col_shape_ids&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">col_box_ids</span><span class="p">[</span><span class="s1">&#39;chest&#39;</span><span class="p">],</span>
+                                <span class="n">col_sphere_id_chest</span><span class="p">,</span>
+                                <span class="n">col_sphere_id_chest</span><span class="p">,</span>
+                                <span class="n">col_box_ids</span><span class="p">[</span><span class="s1">&#39;hip&#39;</span><span class="p">]]</span> <span class="o">+</span> \
+                               <span class="p">[</span><span class="n">col_sphere_id_chest</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> \
+                               <span class="p">[</span><span class="n">col_sphere_id_hip</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> \
+                               <span class="p">[</span><span class="n">col_box_ids</span><span class="p">[</span><span class="s1">&#39;left_hand&#39;</span><span class="p">],</span>
+                                <span class="n">col_box_ids</span><span class="p">[</span><span class="s1">&#39;right_hand&#39;</span><span class="p">],</span>
+                                <span class="n">col_box_ids</span><span class="p">[</span><span class="s1">&#39;left_foot&#39;</span><span class="p">],</span>
+                                <span class="n">col_box_ids</span><span class="p">[</span><span class="s1">&#39;right_foot&#39;</span><span class="p">]]</span>
+
+    <span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_vis_shape_ids&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">vis_box_ids</span><span class="p">[</span><span class="s1">&#39;chest&#39;</span><span class="p">],</span>
+                                <span class="n">vis_sphere_id_chest</span><span class="p">,</span>
+                                <span class="n">vis_sphere_id_chest</span><span class="p">,</span>
+                                <span class="n">vis_box_ids</span><span class="p">[</span><span class="s1">&#39;hip&#39;</span><span class="p">]]</span> <span class="o">+</span> \
+                               <span class="p">[</span><span class="n">vis_sphere_id_chest</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> \
+                               <span class="p">[</span><span class="n">vis_sphere_id_hip</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> \
+                               <span class="p">[</span><span class="n">vis_box_ids</span><span class="p">[</span><span class="s1">&#39;left_hand&#39;</span><span class="p">],</span>
+                                <span class="n">vis_box_ids</span><span class="p">[</span><span class="s1">&#39;right_hand&#39;</span><span class="p">],</span>
+                                <span class="n">vis_box_ids</span><span class="p">[</span><span class="s1">&#39;left_foot&#39;</span><span class="p">],</span>
+                                <span class="n">vis_box_ids</span><span class="p">[</span><span class="s1">&#39;right_foot&#39;</span><span class="p">]]</span>
+
+    <span class="c1"># link positions must be half the size of objects of both ends or be zero</span>
+    <span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_pos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="o">-</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="o">-</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="o">-</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;left_hand&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;right_hand&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;chest&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="o">-</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;left_foot&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;right_foot&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;hip&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="n">mb</span><span class="p">,</span> <span class="n">col_sphere_id_chest</span><span class="p">,</span> <span class="n">vis_sphere_id_chest</span>
+
+
+<span class="k">def</span> <span class="nf">_genome2simulation</span><span class="p">(</span><span class="n">sim_id</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">genome</span><span class="o">=</span><span class="p">({},</span> <span class="p">{})):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a given genome to a multi body ID used by pybullet.</span>
+
+<span class="sd">    Wrapper function to convert a genome to a multi body used by pybullet. If no genome was provided a new random genome</span>
+<span class="sd">    will be created and the multi body ID of that will be returned.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    genome : list | tuple</span>
+<span class="sd">        Genome containing dictionaries for size, move pattern and evolution configuration. The first list entry are</span>
+<span class="sd">        genes for box sizes.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mb_id : int</span>
+<span class="sd">        Multi body ID.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># transform genome to simulatable multi body (or create new random genome and transform)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">bool</span><span class="p">(</span><span class="n">genome</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">mb_data</span> <span class="o">=</span> <span class="n">_genome2multi_body_data</span><span class="p">(</span><span class="n">sim_id</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mb_data</span> <span class="o">=</span> <span class="n">_genome2multi_body_data</span><span class="p">(</span><span class="n">sim_id</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">genome</span><span class="p">)</span>
+
+    <span class="n">mb</span> <span class="o">=</span> <span class="n">mb_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">p</span><span class="o">.</span><span class="n">createMultiBody</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_masses&#39;</span><span class="p">]),</span>
+                             <span class="n">mb_data</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                             <span class="n">mb_data</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                             <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mb</span><span class="p">[</span><span class="s1">&#39;start_height&#39;</span><span class="p">]],</span>
+                             <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                             <span class="n">linkMasses</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_masses&#39;</span><span class="p">],</span>
+                             <span class="n">linkCollisionShapeIndices</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_col_shape_ids&#39;</span><span class="p">],</span>
+                             <span class="n">linkVisualShapeIndices</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_vis_shape_ids&#39;</span><span class="p">],</span>
+                             <span class="n">linkPositions</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_pos&#39;</span><span class="p">],</span>
+                             <span class="n">linkOrientations</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_ori&#39;</span><span class="p">],</span>
+                             <span class="n">linkInertialFramePositions</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_iner_frame_pos&#39;</span><span class="p">],</span>
+                             <span class="n">linkInertialFrameOrientations</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;link_iner_frame_ori&#39;</span><span class="p">],</span>
+                             <span class="n">linkParentIndices</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;inds&#39;</span><span class="p">],</span>
+                             <span class="n">linkJointTypes</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;joint_types&#39;</span><span class="p">],</span>
+                             <span class="n">linkJointAxis</span><span class="o">=</span><span class="n">mb</span><span class="p">[</span><span class="s1">&#39;axis&#39;</span><span class="p">],</span>
+                             <span class="n">useMaximalCoordinates</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                             <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_disable_collision</span><span class="p">(</span><span class="n">sim_id</span><span class="p">,</span> <span class="n">pop</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Removes all inter-object collision for all multi bodies.</span>
+
+<span class="sd">    This is to ensure that simultaneously simulated multi bodies do not interfere with each other by collision.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+<span class="sd">    pop : list</span>
+<span class="sd">        List of ind_ids for multiple individuals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># disable collision between each joint in individual i and each joint in individual j</span>
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">individual</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pop</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>  <span class="c1"># from first to second last</span>
+        <span class="k">for</span> <span class="n">other_individual</span> <span class="ow">in</span> <span class="n">pop</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]:</span>  <span class="c1"># from next (relative to above) to end</span>
+
+            <span class="c1"># pair all link indices and disable collision (num of joints = num of links)</span>
+            <span class="k">for</span> <span class="n">joint</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">getNumJoints</span><span class="p">(</span><span class="n">individual</span><span class="p">,</span> <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)):</span>  <span class="c1"># all joints to ...</span>
+                <span class="k">for</span> <span class="n">other_joint</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">getNumJoints</span><span class="p">(</span><span class="n">other_individual</span><span class="p">,</span>
+                                                            <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)):</span>  <span class="c1"># ... all other joints</span>
+                    <span class="n">p</span><span class="o">.</span><span class="n">setCollisionFilterPair</span><span class="p">(</span><span class="n">individual</span><span class="p">,</span> <span class="n">other_individual</span><span class="p">,</span> <span class="n">joint</span><span class="p">,</span> <span class="n">other_joint</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                                             <span class="n">physicsClientId</span><span class="o">=</span><span class="n">sim_id</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">lifeproject</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

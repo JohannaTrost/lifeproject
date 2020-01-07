@@ -1,0 +1,683 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>src package &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="simulate_evolution module" href="simulate_evolution.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="src-package">
+<h1>src package<a class="headerlink" href="#src-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-src.IO">
+<span id="src-io-module"></span><h2>src.IO module<a class="headerlink" href="#module-src.IO" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="src.IO.convert_some_args">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">convert_some_args</code><span class="sig-paren">(</span><em class="sig-param">args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#convert_some_args"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.convert_some_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts arguments from argument parser.</p>
+<p>Some arguments obtained from the argument parser need to be pre-processed before usage. E.g. the CPU count has to be
+converted if -1 was selected, such that the maximum available amount of physical cores is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>args</strong><span class="classifier">argparse.Namespace</span></dt><dd><p>Parsed arguments.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>args</strong><span class="classifier">argparse.Namespace</span></dt><dd><p>Parsed arguments with corrections applied.</p>
+</dd>
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Configuration file for the current simulation. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.find_latest_gen">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">find_latest_gen</code><span class="sig-paren">(</span><em class="sig-param">save_folder_dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#find_latest_gen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.find_latest_gen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds the latest generation in a given evolution directory.</p>
+<p>Within a precomputed evolution, generations are saved as <code class="docutils literal notranslate"><span class="pre">gen_&lt;generation</span> <span class="pre">number&gt;.pkl</span></code> files. This function looks
+through the specified directory and finds the highest number attached to the file names starting with <cite>‘gen_’</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>save_folder_dir</strong><span class="classifier">str</span></dt><dd><p>Directory used to search for the latest generation.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>latest_gen</strong><span class="classifier">int</span></dt><dd><p>Last generation found.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.get_from_config">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">get_from_config</code><span class="sig-paren">(</span><em class="sig-param">args</em>, <em class="sig-param">evo_config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#get_from_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.get_from_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output pre-processed data from arguments and evolution configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>args</strong><span class="classifier">argparse.Namespace</span></dt><dd><p>Parsed arguments.</p>
+</dd>
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Configuration file for the current simulation. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>gene_pool</strong><span class="classifier">list</span></dt><dd><p>List of genomes for all individuals. Created using <code class="xref py py-func docutils literal notranslate"><span class="pre">src.new_gene_pool()</span></code>.</p>
+</dd>
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Modified evolution configuration.</p>
+</dd>
+<dt><strong>stats</strong><span class="classifier">list</span></dt><dd><p>Statistics on the current evolution.</p>
+</dd>
+<dt><strong>fitness</strong><span class="classifier">list</span></dt><dd><p>Fitness of the current evolution per individual.</p>
+</dd>
+<dt><strong>tracker</strong><span class="classifier">list</span></dt><dd><p>List of dictionaries to store the paths (x, y coordinates over time) for each individual.</p>
+</dd>
+<dt><strong>parent_dir</strong><span class="classifier">str</span></dt><dd><p>Current working directory of the simulation (evolution directory).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.load_gene_pool">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">load_gene_pool</code><span class="sig-paren">(</span><em class="sig-param">filename='gen_0.pkl'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#load_gene_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.load_gene_pool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads gene pool from pickle file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str</span></dt><dd><p>Filename to read the data from.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>gene_pool</strong><span class="classifier">list</span></dt><dd><p>List of genomes for all individuals. Created using <a class="reference internal" href="#src.IO.new_gene_pool" title="src.IO.new_gene_pool"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.new_gene_pool()</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.load_stats">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">load_stats</code><span class="sig-paren">(</span><em class="sig-param">filename='stats.csv'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#load_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.load_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads statistics from csv file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str</span></dt><dd><p>Filename to read the data from.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>stats</strong><span class="classifier">list</span></dt><dd><p>Statistics on an evolution.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.load_tracker">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">load_tracker</code><span class="sig-paren">(</span><em class="sig-param">filename='tracker.pkl'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#load_tracker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.load_tracker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads gene pool from pickle file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str</span></dt><dd><p>Filename to read the data from.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>tracker</strong><span class="classifier">list</span></dt><dd><p>List of tracker dictionaries for all individuals.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.make_default_evo_config">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">make_default_evo_config</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#make_default_evo_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.make_default_evo_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create default evolution configuration.</p>
+<p>Each evolution has a configuration file attached to it. If no file is present, a default file is needed, which is
+created on demand here.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Default evolution configuration. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.new_gene_pool">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">new_gene_pool</code><span class="sig-paren">(</span><em class="sig-param">gene_pool_file</em>, <em class="sig-param">evo_config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#new_gene_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.new_gene_pool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns new gene pool.</p>
+<p>A new gene pool houses the genomes for all individuals. This can be obtained by reading an existing file from disk
+or by newly initializing a <code class="docutils literal notranslate"><span class="pre">gene_pool</span></code> according to the evolution configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>gene_pool_file</strong><span class="classifier">str | None</span></dt><dd><p>If None or str ‘random’ a new gene pools is created randomly. Otherwise gene_pool_file must be a path pointing
+to an existing gene pool file, which is loaded.</p>
+</dd>
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Configuration file for the current simulation. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>gene_pool</strong><span class="classifier">list</span></dt><dd><p>List of genomes for all individuals.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.read_evo_config">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">read_evo_config</code><span class="sig-paren">(</span><em class="sig-param">filename='evo_config.json'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#read_evo_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.read_evo_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads evolution configuration from json file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str</span></dt><dd><p>Filename to read the data from.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Evolution configuration. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.return_parent_path">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">return_parent_path</code><span class="sig-paren">(</span><em class="sig-param">args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#return_parent_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.return_parent_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns parent directory (evolution directory).</p>
+<p>Obtains the path, where all data is stored to or loaded from. Basically the working directory of the current
+evolution. Thus also called evolution directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>args</strong><span class="classifier">argparse.Namespace</span></dt><dd><p>Parsed arguments.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>parent_dir</strong><span class="classifier">str</span></dt><dd><p>Directory from existing files are loaded or stored. Also called evolution directory.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.save_gene_pool">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">save_gene_pool</code><span class="sig-paren">(</span><em class="sig-param">gene_pool</em>, <em class="sig-param">filename='gen_0.pkl'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#save_gene_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.save_gene_pool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves gene pool to pickle file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>gene_pool</strong><span class="classifier">list</span></dt><dd><p>List of genomes for all individuals. Created using <a class="reference internal" href="#src.IO.new_gene_pool" title="src.IO.new_gene_pool"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.new_gene_pool()</span></code></a>.</p>
+</dd>
+<dt><strong>filename</strong><span class="classifier">str</span></dt><dd><p>Filename to save the data to.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.save_stats">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">save_stats</code><span class="sig-paren">(</span><em class="sig-param">stats</em>, <em class="sig-param">filename='stats.csv'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#save_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.save_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves statistics to csv file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>stats</strong><span class="classifier">list | np.array</span></dt><dd><p>Statistics on the current evolution.</p>
+</dd>
+<dt><strong>filename</strong><span class="classifier">str</span></dt><dd><p>Filename to save the data to.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.save_tracker">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">save_tracker</code><span class="sig-paren">(</span><em class="sig-param">tracker</em>, <em class="sig-param">filename='tracker.pkl'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#save_tracker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.save_tracker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves tracker to pickle file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>tracker</strong><span class="classifier">list</span></dt><dd><p>List of tracker dictionaries for all individuals.</p>
+</dd>
+<dt><strong>filename</strong><span class="classifier">str</span></dt><dd><p>Filename to save the data to.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.IO.write_evo_config">
+<code class="sig-prename descclassname">src.IO.</code><code class="sig-name descname">write_evo_config</code><span class="sig-paren">(</span><em class="sig-param">evo_config</em>, <em class="sig-param">filename='evo_config.json'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/IO.html#write_evo_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.IO.write_evo_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves evolution configuration to json file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Evolution configuration. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+<dt><strong>filename</strong><span class="classifier">str</span></dt><dd><p>Filename to save the data to.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-src.evolution">
+<span id="src-evolution-module"></span><h2>src.evolution module<a class="headerlink" href="#module-src.evolution" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="src.evolution.crossing">
+<code class="sig-prename descclassname">src.evolution.</code><code class="sig-name descname">crossing</code><span class="sig-paren">(</span><em class="sig-param">pairs</em>, <em class="sig-param">gene_pool</em>, <em class="sig-param">evo_config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/evolution.html#crossing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.evolution.crossing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Crossing of selected pairs in order to evolve a new generation.</p>
+<p>Computes a new generation by crossing the genomes of both parents in each pair. Note that pairs stores indices
+referring to entries in gene_pool. A new child is created by selecting values for each feature in each gene randomly
+within a range determined by the parent’s genomes. Afterwards mutation can happen given certain probabilities stored
+in the evolution configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>pairs</strong><span class="classifier">list</span></dt><dd><p>Pairs of survivor indices.</p>
+</dd>
+<dt><strong>gene_pool</strong><span class="classifier">list</span></dt><dd><p>List of genomes for all individuals.</p>
+</dd>
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Configuration file for the current simulation. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.evolution.fitness">
+<code class="sig-prename descclassname">src.evolution.</code><code class="sig-name descname">fitness</code><span class="sig-paren">(</span><em class="sig-param">pop</em>, <em class="sig-param">sim_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/evolution.html#fitness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.evolution.fitness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute fitness for the entire population based on how far each individual moved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>pop</strong><span class="classifier">list</span></dt><dd><p>List of ind_ids for multiple individuals.</p>
+</dd>
+<dt><strong>sim_id</strong><span class="classifier">int</span></dt><dd><p>Index pointing to the physics server of the respective simulation.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>fitness_pop</strong><span class="classifier">list</span></dt><dd><p>Fitness for each individual in the population, that is the distance moved from [0, 0] since the start of the
+simulation.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.evolution.selection">
+<code class="sig-prename descclassname">src.evolution.</code><code class="sig-name descname">selection</code><span class="sig-paren">(</span><em class="sig-param">sorted_pop</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/evolution.html#selection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.evolution.selection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select individuals based on performance (i.e. fitness).</p>
+<p>By default as many individuals survive as half the size of the population. From those as many randomly assigned
+pairs are selected as there were individuals in the original population.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>sorted_pop</strong><span class="classifier">list</span></dt><dd><p>List of individuals of one population, sorted descending with respect to fitness.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>pairs</strong><span class="classifier">list</span></dt><dd><p>Pairs of survivors. Note that len(pairs) == len(sorted_pop).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-src.individual">
+<span id="src-individual-module"></span><h2>src.individual module<a class="headerlink" href="#module-src.individual" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="src.individual.get_dist">
+<code class="sig-prename descclassname">src.individual.</code><code class="sig-name descname">get_dist</code><span class="sig-paren">(</span><em class="sig-param">ind_id</em>, <em class="sig-param">sim_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/individual.html#get_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.individual.get_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes distance to starting position ([0, 0]).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>ind_id</strong><span class="classifier">int</span></dt><dd><p>Index pointing to the multi body of the respective simulation.</p>
+</dd>
+<dt><strong>sim_id</strong><span class="classifier">int</span></dt><dd><p>Index pointing to the physics server of the respective simulation.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>distance</strong><span class="classifier">float</span></dt><dd><p>Distance to [0, 0]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-src.simulation">
+<span id="src-simulation-module"></span><h2>src.simulation module<a class="headerlink" href="#module-src.simulation" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="src.simulation.remove_simulation">
+<code class="sig-prename descclassname">src.simulation.</code><code class="sig-name descname">remove_simulation</code><span class="sig-paren">(</span><em class="sig-param">pop</em>, <em class="sig-param">sim_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/simulation.html#remove_simulation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.simulation.remove_simulation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes all object from simulation and disconnects from physics server.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>pop</strong><span class="classifier">list</span></dt><dd><p>List of ind_ids for multiple individuals.</p>
+</dd>
+<dt><strong>sim_id</strong><span class="classifier">int</span></dt><dd><p>Index pointing to the physics server of the respective simulation.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.simulation.simulate_multi_core">
+<code class="sig-prename descclassname">src.simulation.</code><code class="sig-name descname">simulate_multi_core</code><span class="sig-paren">(</span><em class="sig-param">gene_pool</em>, <em class="sig-param">evo_config</em>, <em class="sig-param">track_individuals=True</em>, <em class="sig-param">num_cores=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/simulation.html#simulate_multi_core"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.simulation.simulate_multi_core" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs direct simulation on multiple CPU cores.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note that due to different system architectures this function works differently on windows and unix-oid
+systems.</p>
+</div>
+<p>To use multi core processing, we exploit the fact, that individuals can be simulated independently. Thus the gene
+pool is split into mostly evenly sized parts and for each part the simulation is run on a separate CPU core.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>gene_pool</strong><span class="classifier">list</span></dt><dd><p>List of genomes for all individuals. Created using <a class="reference internal" href="#src.IO.new_gene_pool" title="src.IO.new_gene_pool"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.new_gene_pool()</span></code></a>.</p>
+</dd>
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Configuration file for the current simulation.</p>
+</dd>
+<dt><strong>track_individuals</strong><span class="classifier">bool</span></dt><dd><p>Whether to collect position data for all individuals.</p>
+</dd>
+<dt><strong>num_cores</strong><span class="classifier">int</span></dt><dd><p>Number of CPU cores used for the simulation. If -1, all available cores will be utilized.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>fitness_all</strong><span class="classifier">list</span></dt><dd><p>List of fitness values for all individuals after merging results.</p>
+</dd>
+<dt><strong>tracker_all</strong><span class="classifier">dict</span></dt><dd><p>Paths recorded for each individual. Key values represent individual IDs within the simulation.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.simulation.simulate_pop">
+<code class="sig-prename descclassname">src.simulation.</code><code class="sig-name descname">simulate_pop</code><span class="sig-paren">(</span><em class="sig-param">gene_pool</em>, <em class="sig-param">evo_config</em>, <em class="sig-param">args=None</em>, <em class="sig-param">direct=False</em>, <em class="sig-param">track_individuals=True</em>, <em class="sig-param">sim_id=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/simulation.html#simulate_pop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.simulation.simulate_pop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Genomes for multiple individuals are converted into multi bodies and simulated using <cite>pybullet</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>gene_pool</strong><span class="classifier">list</span></dt><dd><p>List of genomes for all individuals. Created using <a class="reference internal" href="#src.IO.new_gene_pool" title="src.IO.new_gene_pool"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.new_gene_pool()</span></code></a>.</p>
+</dd>
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Configuration file for the current simulation. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+<dt><strong>args</strong><span class="classifier">argparse.Namespace</span></dt><dd><p>Parsed arguments.</p>
+</dd>
+<dt><strong>direct</strong><span class="classifier">bool</span></dt><dd><p>Whether to use direct or GUI based simulation.</p>
+</dd>
+<dt><strong>track_individuals</strong><span class="classifier">bool</span></dt><dd><p>Whether to collect position data for all individuals.</p>
+</dd>
+<dt><strong>sim_id</strong><span class="classifier">int</span></dt><dd><p>Index pointing to the physics server of the respective simulation.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>pop</strong><span class="classifier">list</span></dt><dd><p>List of ind_ids for multiple individuals.</p>
+</dd>
+<dt><strong>sim_id</strong><span class="classifier">int</span></dt><dd><p>Index pointing to the physics server of the respective simulation.</p>
+</dd>
+<dt><strong>tracker</strong><span class="classifier">dict</span></dt><dd><p>Paths recorded for each individual. Key values represent individual IDs within the simulation.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.simulation.worker">
+<code class="sig-prename descclassname">src.simulation.</code><code class="sig-name descname">worker</code><span class="sig-paren">(</span><em class="sig-param">args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/simulation.html#worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.simulation.worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Worker function for parallel processing of simulations.</p>
+<p>Output will be put into static, shared object defined elsewhere.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl>
+<dt><strong>args</strong><span class="classifier">list | tuple</span></dt><dd><p><code class="docutils literal notranslate"><span class="pre">args[0]</span></code> is the index of the worker</p>
+<p><code class="docutils literal notranslate"><span class="pre">args[1]</span></code> is the gene pool (part)</p>
+<p><code class="docutils literal notranslate"><span class="pre">args[2]</span></code> is the evolution configuration</p>
+<p><code class="docutils literal notranslate"><span class="pre">args[3]</span></code> is a boolean value indicating whether to track individual’s paths</p>
+<p><code class="docutils literal notranslate"><span class="pre">args[4]</span></code> is the shared queue were data is appended (only for windows)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-src.visualize">
+<span id="src-visualize-module"></span><h2>src.visualize module<a class="headerlink" href="#module-src.visualize" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="src.visualize.show_individual">
+<code class="sig-prename descclassname">src.visualize.</code><code class="sig-name descname">show_individual</code><span class="sig-paren">(</span><em class="sig-param">gene_pool</em>, <em class="sig-param">evo_config</em>, <em class="sig-param">args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/visualize.html#show_individual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.visualize.show_individual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Renders a GUI based simulation for selected individuals.</p>
+<p>Displays a viewable simulation of all individuals in <code class="docutils literal notranslate"><span class="pre">gene_pool</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>gene_pool</strong><span class="classifier">list</span></dt><dd><p>List of genomes for all individuals. Created using <a class="reference internal" href="#src.IO.new_gene_pool" title="src.IO.new_gene_pool"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.new_gene_pool()</span></code></a>.</p>
+</dd>
+<dt><strong>evo_config</strong><span class="classifier">dict</span></dt><dd><p>Configuration file for the current simulation. See <a class="reference internal" href="#src.IO.make_default_evo_config" title="src.IO.make_default_evo_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">src.IO.make_default_evo_config()</span></code></a>.</p>
+</dd>
+<dt><strong>args</strong><span class="classifier">argparse.Namespace</span></dt><dd><p>Parsed arguments.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.visualize.show_multiple_gen_paths">
+<code class="sig-prename descclassname">src.visualize.</code><code class="sig-name descname">show_multiple_gen_paths</code><span class="sig-paren">(</span><em class="sig-param">gen_tracked_paths</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/visualize.html#show_multiple_gen_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.visualize.show_multiple_gen_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots paths for multiple generations.</p>
+<p>Creates 5 plots evenly spaced across the selected evolution, such that the first and last generation is included.
+Plots show tracked paths for each individual as seen from on top.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>gen_tracked_paths</strong><span class="classifier">list</span></dt><dd><p>Tracker for multiple generations.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.visualize.show_path">
+<code class="sig-prename descclassname">src.visualize.</code><code class="sig-name descname">show_path</code><span class="sig-paren">(</span><em class="sig-param">tracked_paths</em>, <em class="sig-param">ax_lim=None</em>, <em class="sig-param">title='paths of individuals'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/visualize.html#show_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.visualize.show_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show tracked path for single (multicolored) or multiple (one color per individual) individuals.</p>
+<p>Plots the tracked path for selected individuals. If only one individual was selected, a multicolored line indicates
+the progress of the selected individual. If multiple individuals were selected, a new color will be assigned to each
+individual.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>tracked_paths</strong><span class="classifier">dict</span></dt><dd><p>Tracker for one generation. Each key is a different individual.</p>
+</dd>
+<dt><strong>ax_lim</strong><span class="classifier">float | int</span></dt><dd><p>Axis limit +- selected value.</p>
+</dd>
+<dt><strong>title</strong><span class="classifier">str</span></dt><dd><p>Plot title.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.visualize.show_stats">
+<code class="sig-prename descclassname">src.visualize.</code><code class="sig-name descname">show_stats</code><span class="sig-paren">(</span><em class="sig-param">stats</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/visualize.html#show_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.visualize.show_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots statistics for average and best performance over generations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>stats</strong><span class="classifier">list | np.array</span></dt><dd><p>Statistics over generations.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-src">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-src" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">lifeproject</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="experiments.html">experiments package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulate_evolution.html">simulate_evolution module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">src package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">lifeproject</a><ul>
+      <li>Previous: <a href="simulate_evolution.html" title="previous chapter">simulate_evolution module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/src.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -8,6 +8,63 @@ import time
 
 
 def main():
+    """Main function to run the program.
+
+    The function can be run from the command line, via
+
+    ``python simulate_evolution.py <args>``
+
+    .. note:: There are two different modes: `simulation` and `visualization` mode.
+              You can obtain an overview of all the command line arguments by typing:
+
+              ``python simulate_evolution.py -h``
+
+              .. code-block:: bash
+
+                usage: simulate_evolution.py [-h] [-i INDIVIDUALS] [-g GENERATIONS]
+                                     [-d DURATION] [-gc] [-e EVOLUTION_DIR]
+                                     [-gen GENERATION] [-nt] [-s] [-o] [-c CORES] [-v]
+                                     [-f] [-sd SLOW_DOWN_FACTOR] [-nb] [-ss]
+
+                optional arguments:
+                  -h, --help            show this help message and exit
+                  -i INDIVIDUALS, --individuals INDIVIDUALS
+                                        number of individuals per generation - In case
+                                        visualization mode was chosen, a random set of i
+                                        individuals will be chosen for displaying (default=10)
+                  -g GENERATIONS, --generations GENERATIONS
+                                        number of generations to be evolved (default=10)
+                  -d DURATION, --duration DURATION
+                                        duration of each simulation in seconds - Final fitness
+                                        is obtained after that time (default=10)
+                  -gc, --get_config     only create default config file and exit
+                  -e EVOLUTION_DIR, --evolution_dir EVOLUTION_DIR
+                                        parent directory for the evolution to be stored or
+                                        loaded from (default=example)
+                  -gen GENERATION, --generation GENERATION
+                                        generation on which to continue evolution or
+                                        generation to display if visualization mode was chosen
+                                        - Set -1 for latest (default=-1)
+                  -nt, --no_tracking    disable tracker for individuals
+                  -s, --save_gene_pool  Save all gene pools per generation to new folder
+                  -o, --overwrite       overwrite existing data
+                  -c CORES, --cores CORES
+                                        number of CPU cores for simulating one generation -
+                                        Set to -1 for all cores (default=-1)
+                  -v, --visualize       visualize results - specify evolution directory with
+                                        the help of -e
+                  -f, --follow_target   whether to follow the target with the GUI camera
+                  -sd SLOW_DOWN_FACTOR, --slow_down_factor SLOW_DOWN_FACTOR
+                                        divide GUI update speed by this value
+                  -nb, --not_only_best  do not show result of best, but rather -i random
+                                        individuals
+                  -ss, --show_stats     whether to show statistics on the evolution - If set,
+                                        statistics and not rendered individuals are shown
+
+    `Simulation` mode refers to simulating an evolution without displaying actual individuals, whereas `visualization`
+    mode renders a selected set of individuals in a GUI window for the user to inspect.
+    """
+
     # argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--individuals', default=10, type=int,

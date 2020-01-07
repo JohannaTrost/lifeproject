@@ -38,7 +38,7 @@ def _compute_force(mass, evo_config):
     mass : float
         Mass used to compute the force.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------
@@ -67,7 +67,7 @@ def _compute_mass(box_size, evo_config):
         Size of the box for which to compute the mass. All three dimensions must be given in "half extend", which is
         half the size in each dimension.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------
@@ -149,7 +149,7 @@ def _move_individual(ind_id, genome, move_step, evo_config, sim_id):
         operation is applied to ensure proper step selection, once all steps are used. This renders the move pattern
         "circular".
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
     sim_id : int
         Index pointing to the physics server of the respective simulation.
     """
@@ -172,7 +172,7 @@ def _move_limb(ind_id, limb, target_pos, evo_config, sim_id):
     target_pos : float
         Target position of the joint motor in multiples of pi.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
     sim_id : int
         Index pointing to the physics server of the respective simulation.
     """
@@ -197,12 +197,12 @@ def _move_limb(ind_id, limb, target_pos, evo_config, sim_id):
 def _move_pattern_size(evo_config):
     """Initialize the size of the movement pattern obtained from the evolution configuration.
 
-    If specified in the evolution configuration, the size can vary by ± 50% randomly.
+    If specified in the evolution configuration, the size can vary by +- 50% randomly.
 
     Parameters
     ----------
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------
@@ -213,7 +213,7 @@ def _move_pattern_size(evo_config):
     pattern_length = evo_config['individuals']['start_move_pattern_size']
     vary_pattern_length = evo_config['individuals']['vary_pattern_length']
 
-    # compute size of movement pattern (jitter of ± 50%)
+    # compute size of movement pattern (jitter of +- 50%)
     if vary_pattern_length:
         return int(pattern_length * (1.5 - np.random.rand()))
     else:
@@ -223,7 +223,7 @@ def _move_pattern_size(evo_config):
 def _make_move_pattern(limb_dict, evo_config):
     """Initializes a random start movement pattern.
 
-    Randomly initializes a movement pattern by selecting values between ± pi. If specified the movement pattern can be
+    Randomly initializes a movement pattern by selecting values between +- pi. If specified the movement pattern can be
     normalized. In case so, it will be ensured, that the absolute values of all steps within the pattern sum up to 2 pi.
 
     Parameters
@@ -231,7 +231,7 @@ def _make_move_pattern(limb_dict, evo_config):
     limb_dict : dict
         Dictionary containing the joint IDs of the multi body.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------
@@ -331,7 +331,7 @@ def _make_size_dict(evo_config):
     Parameters
     ----------
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------
@@ -384,7 +384,7 @@ def _make_random_genome(evo_config):
     Parameters
     ----------
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------

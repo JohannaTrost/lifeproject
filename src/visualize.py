@@ -59,7 +59,7 @@ def show_path(tracked_paths, ax_lim=None, title='paths of individuals'):
     tracked_paths : dict
         Tracker for one generation. Each key is a different individual.
     ax_lim : float | int
-        Axis limit ± selected value.
+        Axis limit +- selected value.
     title : str
         Plot title.
     """
@@ -130,14 +130,14 @@ def show_stats(stats):
 def show_individual(gene_pool, evo_config, args):
     """Renders a GUI based simulation for selected individuals.
 
-    Displays a viewable simulation of all individuals in gene_pool.
+    Displays a viewable simulation of all individuals in ``gene_pool``.
 
     Parameters
     ----------
     gene_pool : list
-        List of genomes for all individuals.
+        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
     args : argparse.Namespace
         Parsed arguments.
     """

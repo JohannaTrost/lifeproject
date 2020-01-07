@@ -1,0 +1,540 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>src.IO &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.IO</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">src.evolution</span> <span class="k">import</span> <span class="n">_make_random_gene_pool</span>
+<span class="kn">from</span> <span class="nn">psutil</span> <span class="k">import</span> <span class="n">cpu_count</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="n">sep</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span>
+
+
+<div class="viewcode-block" id="convert_some_args"><a class="viewcode-back" href="../../src.html#src.IO.convert_some_args">[docs]</a><span class="k">def</span> <span class="nf">convert_some_args</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts arguments from argument parser.</span>
+
+<span class="sd">    Some arguments obtained from the argument parser need to be pre-processed before usage. E.g. the CPU count has to be</span>
+<span class="sd">    converted if -1 was selected, such that the maximum available amount of physical cores is used.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    args : argparse.Namespace</span>
+<span class="sd">        Parsed arguments.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    args : argparse.Namespace</span>
+<span class="sd">        Parsed arguments with corrections applied.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># use all available CPU cores of -1</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">cores</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">cores</span> <span class="o">=</span> <span class="n">cpu_count</span><span class="p">(</span><span class="n">logical</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># check whether generation and duration was parsed - this is necessary to forward updated values to the evolution</span>
+    <span class="c1"># configuration</span>
+    <span class="n">gen_was_none</span><span class="p">,</span> <span class="n">dur_was_none</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span>
+
+    <span class="c1"># default values have to be created this way because in visualization mode duration should be passed without</span>
+    <span class="c1"># overwriting the config and in case the user wants to continue evolving for some generations, the argument needs</span>
+    <span class="c1"># to be passed to the config</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">generations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">generations</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">gen_was_none</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">duration</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">duration</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">dur_was_none</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># get parent directory for storing simulation data</span>
+    <span class="n">parent_dir</span> <span class="o">=</span> <span class="n">return_parent_path</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="c1"># try to load existing evolution file - if it does not exist or cannot be read make default</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">evo_config</span> <span class="o">=</span> <span class="n">read_evo_config</span><span class="p">(</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;evo_config.json&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Using precomputed evolution configuration: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;evo_config.json&#39;</span><span class="p">))</span>
+
+        <span class="c1"># pass updated arguments to evolution configuration</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">gen_was_none</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">visualize</span><span class="p">:</span>
+            <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;generations&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">generations</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">generations</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;generations&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dur_was_none</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">visualize</span><span class="p">:</span>
+            <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;duration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">duration</span>
+        <span class="k">elif</span> <span class="n">dur_was_none</span><span class="p">:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">duration</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;duration&#39;</span><span class="p">]</span>
+
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No configuration found. Creating new default evolution.&#39;</span><span class="p">)</span>
+        <span class="n">evo_config</span> <span class="o">=</span> <span class="n">make_default_evo_config</span><span class="p">()</span>
+
+        <span class="c1"># pass arguments to evolution configuration</span>
+        <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;generations&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">generations</span>
+        <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;individuals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">individuals</span>
+        <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;duration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">duration</span>
+
+    <span class="c1"># define result paths</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;stats.csv&#39;</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">fitness</span> <span class="o">=</span> <span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;fitness.csv&#39;</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">tracker</span> <span class="o">=</span> <span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;tracker.pkl&#39;</span>
+
+    <span class="c1"># if parent dir empty or overwrite initialize new evolution</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">parent_dir</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">gene_pool_file</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">generation</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="c1"># if desired find last generation</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">generation</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># if no generation file present initialize new evolution</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="s1">&#39;gen_&#39;</span> <span class="ow">in</span> <span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">parent_dir</span><span class="p">)]):</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">generation</span> <span class="o">=</span> <span class="n">find_latest_gen</span><span class="p">(</span><span class="n">parent_dir</span><span class="p">)</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">gene_pool_file</span> <span class="o">=</span> <span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;gen_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">generation</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.pkl&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">gene_pool_file</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">generation</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># otherwise take generation specified</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">gene_pool_file</span> <span class="o">=</span> <span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;gen_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">generation</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.pkl&#39;</span>
+
+    <span class="c1"># make sure evolution continues at correct generation</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">generation</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">visualize</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">generation</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;generations&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">generation</span> <span class="o">+</span> <span class="n">args</span><span class="o">.</span><span class="n">generations</span>
+
+    <span class="k">return</span> <span class="n">args</span><span class="p">,</span> <span class="n">evo_config</span></div>
+
+
+<div class="viewcode-block" id="get_from_config"><a class="viewcode-back" href="../../src.html#src.IO.get_from_config">[docs]</a><span class="k">def</span> <span class="nf">get_from_config</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Output pre-processed data from arguments and evolution configuration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    args : argparse.Namespace</span>
+<span class="sd">        Parsed arguments.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    gene_pool : list</span>
+<span class="sd">        List of genomes for all individuals. Created using :func:`src.new_gene_pool`.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Modified evolution configuration.</span>
+<span class="sd">    stats : list</span>
+<span class="sd">        Statistics on the current evolution.</span>
+<span class="sd">    fitness : list</span>
+<span class="sd">        Fitness of the current evolution per individual.</span>
+<span class="sd">    tracker : list</span>
+<span class="sd">        List of dictionaries to store the paths (x, y coordinates over time) for each individual.</span>
+<span class="sd">    parent_dir : str</span>
+<span class="sd">        Current working directory of the simulation (evolution directory).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># get initial data from parsed arguments</span>
+    <span class="n">gene_pool</span> <span class="o">=</span> <span class="n">new_gene_pool</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">gene_pool_file</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">)</span>
+
+    <span class="c1"># in case a previous gene pool was loaded, we have to assure proper number of individuals parsing</span>
+    <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;individuals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">:</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">fitness</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">tracker</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># if gene pool file was not defined create random gene pool</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="n">load_stats</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">stats</span><span class="p">)</span>
+            <span class="n">fitness</span> <span class="o">=</span> <span class="n">load_stats</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">fitness</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_tracking</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">show_stats</span><span class="p">:</span>
+                <span class="n">tracker</span> <span class="o">=</span> <span class="n">load_tracker</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">tracker</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tracker</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">fitness</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">tracker</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># if not results to display were found warn and exit program</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">visualize</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">show_stats</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">fitness</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tracker</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_tracking</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;evolution data not found in </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">return_parent_path</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span>
+
+        <span class="c1"># select the best or i random individuals to display</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">not_only_best</span><span class="p">:</span>
+            <span class="n">best</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="n">args</span><span class="o">.</span><span class="n">generation</span><span class="p">][</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">gene_pool</span> <span class="o">=</span> <span class="p">[</span><span class="n">gene_pool</span><span class="p">[</span><span class="n">best</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ind_sel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random_integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">individuals</span><span class="p">)</span>
+            <span class="n">gene_pool</span> <span class="o">=</span> <span class="p">[</span><span class="n">gene_pool</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span> <span class="k">for</span> <span class="n">ind</span> <span class="ow">in</span> <span class="n">ind_sel</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">gene_pool</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">stats</span><span class="p">,</span> <span class="n">fitness</span><span class="p">,</span> <span class="n">tracker</span><span class="p">,</span> <span class="n">return_parent_path</span><span class="p">(</span><span class="n">args</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="new_gene_pool"><a class="viewcode-back" href="../../src.html#src.IO.new_gene_pool">[docs]</a><span class="k">def</span> <span class="nf">new_gene_pool</span><span class="p">(</span><span class="n">gene_pool_file</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns new gene pool.</span>
+
+<span class="sd">    A new gene pool houses the genomes for all individuals. This can be obtained by reading an existing file from disk</span>
+<span class="sd">    or by newly initializing a ``gene_pool`` according to the evolution configuration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    gene_pool_file : str | None</span>
+<span class="sd">        If None or str &#39;random&#39; a new gene pools is created randomly. Otherwise gene_pool_file must be a path pointing</span>
+<span class="sd">        to an existing gene pool file, which is loaded.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    gene_pool : list</span>
+<span class="sd">        List of genomes for all individuals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># create either random gene pool or load</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gene_pool_file</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_make_random_gene_pool</span><span class="p">(</span><span class="n">evo_config</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gene_pool_file</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">gene_pool_file</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;random&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_make_random_gene_pool</span><span class="p">(</span><span class="n">evo_config</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">load_gene_pool</span><span class="p">(</span><span class="n">gene_pool_file</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="return_parent_path"><a class="viewcode-back" href="../../src.html#src.IO.return_parent_path">[docs]</a><span class="k">def</span> <span class="nf">return_parent_path</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns parent directory (evolution directory).</span>
+
+<span class="sd">    Obtains the path, where all data is stored to or loaded from. Basically the working directory of the current</span>
+<span class="sd">    evolution. Thus also called evolution directory.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    args : argparse.Namespace</span>
+<span class="sd">        Parsed arguments.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    parent_dir : str</span>
+<span class="sd">        Directory from existing files are loaded or stored. Also called evolution directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># returns parent folder to save data in it</span>
+
+    <span class="c1"># create parent directory for simulation</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">evolution_dir</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">parent_dir</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">evolution_dir</span> <span class="o">+</span> <span class="n">sep</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">parent_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="o">+</span> <span class="n">sep</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">save_gene_pool</span><span class="p">:</span>
+
+            <span class="c1"># make unique folder name</span>
+            <span class="n">date_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%m-</span><span class="si">%d</span><span class="s2">-%Y-%H-%M-%S&quot;</span><span class="p">)</span>
+            <span class="n">parent_dir</span> <span class="o">+=</span> <span class="s1">&#39;all_gene_pools_</span><span class="si">{}</span><span class="s1">gen_</span><span class="si">{}</span><span class="s1">ind_</span><span class="si">{}</span><span class="s1">dur_&#39;</span> <span class="o">+</span> <span class="n">date_time</span> <span class="o">+</span> <span class="n">sep</span>
+            <span class="n">parent_dir</span> <span class="o">=</span> <span class="n">parent_dir</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">generations</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">individuals</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">duration</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parent_dir</span> <span class="o">+=</span> <span class="s1">&#39;example&#39;</span> <span class="o">+</span> <span class="n">sep</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">parent_dir</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parent_dir</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">parent_dir</span></div>
+
+
+<div class="viewcode-block" id="save_gene_pool"><a class="viewcode-back" href="../../src.html#src.IO.save_gene_pool">[docs]</a><span class="k">def</span> <span class="nf">save_gene_pool</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;gen_0.pkl&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Saves gene pool to pickle file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    gene_pool : list</span>
+<span class="sd">        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename to save the data to.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pkl_file</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">,</span> <span class="n">pkl_file</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="load_gene_pool"><a class="viewcode-back" href="../../src.html#src.IO.load_gene_pool">[docs]</a><span class="k">def</span> <span class="nf">load_gene_pool</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;gen_0.pkl&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Loads gene pool from pickle file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename to read the data from.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    gene_pool : list</span>
+<span class="sd">        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pkl_file</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">pkl_file</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_stats"><a class="viewcode-back" href="../../src.html#src.IO.save_stats">[docs]</a><span class="k">def</span> <span class="nf">save_stats</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;stats.csv&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Saves statistics to csv file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stats : list | np.array</span>
+<span class="sd">        Statistics on the current evolution.</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename to save the data to.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">stats</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="load_stats"><a class="viewcode-back" href="../../src.html#src.IO.load_stats">[docs]</a><span class="k">def</span> <span class="nf">load_stats</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;stats.csv&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Loads statistics from csv file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename to read the data from.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    stats : list</span>
+<span class="sd">        Statistics on an evolution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="save_tracker"><a class="viewcode-back" href="../../src.html#src.IO.save_tracker">[docs]</a><span class="k">def</span> <span class="nf">save_tracker</span><span class="p">(</span><span class="n">tracker</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;tracker.pkl&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Saves tracker to pickle file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tracker : list</span>
+<span class="sd">        List of tracker dictionaries for all individuals.</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename to save the data to.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pkl_file</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">tracker</span><span class="p">,</span> <span class="n">pkl_file</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="load_tracker"><a class="viewcode-back" href="../../src.html#src.IO.load_tracker">[docs]</a><span class="k">def</span> <span class="nf">load_tracker</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;tracker.pkl&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Loads gene pool from pickle file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename to read the data from.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tracker : list</span>
+<span class="sd">        List of tracker dictionaries for all individuals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pkl_file</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">pkl_file</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="find_latest_gen"><a class="viewcode-back" href="../../src.html#src.IO.find_latest_gen">[docs]</a><span class="k">def</span> <span class="nf">find_latest_gen</span><span class="p">(</span><span class="n">save_folder_dir</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Finds the latest generation in a given evolution directory.</span>
+
+<span class="sd">    Within a precomputed evolution, generations are saved as ``gen_&lt;generation number&gt;.pkl`` files. This function looks</span>
+<span class="sd">    through the specified directory and finds the highest number attached to the file names starting with `&#39;gen_&#39;`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    save_folder_dir : str</span>
+<span class="sd">        Directory used to search for the latest generation.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    latest_gen : int</span>
+<span class="sd">        Last generation found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">latest_gen</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">save_folder_dir</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s1">&#39;gen_&#39;</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
+            <span class="n">curr_gen</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">file</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;gen_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.pkl&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">curr_gen</span> <span class="o">&gt;</span> <span class="n">latest_gen</span><span class="p">:</span>
+                <span class="n">latest_gen</span> <span class="o">=</span> <span class="n">curr_gen</span>
+
+    <span class="k">return</span> <span class="n">latest_gen</span></div>
+
+
+<div class="viewcode-block" id="read_evo_config"><a class="viewcode-back" href="../../src.html#src.IO.read_evo_config">[docs]</a><span class="k">def</span> <span class="nf">read_evo_config</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;evo_config.json&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Loads evolution configuration from json file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename to read the data from.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Evolution configuration. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">json_file</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">json_file</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="write_evo_config"><a class="viewcode-back" href="../../src.html#src.IO.write_evo_config">[docs]</a><span class="k">def</span> <span class="nf">write_evo_config</span><span class="p">(</span><span class="n">evo_config</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;evo_config.json&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Saves evolution configuration to json file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Evolution configuration. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename to save the data to.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">evo_config</span><span class="p">,</span> <span class="n">outfile</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="make_default_evo_config"><a class="viewcode-back" href="../../src.html#src.IO.make_default_evo_config">[docs]</a><span class="k">def</span> <span class="nf">make_default_evo_config</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Create default evolution configuration.</span>
+
+<span class="sd">    Each evolution has a configuration file attached to it. If no file is present, a default file is needed, which is</span>
+<span class="sd">    created on demand here.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Default evolution configuration. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">evo_config</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;individuals&#39;</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s1">&#39;min_box_size&#39;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+                                <span class="s1">&#39;max_box_size&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                                <span class="s1">&#39;random_box_size&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                                <span class="s1">&#39;symmetric&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                                <span class="s1">&#39;min_force&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                                <span class="s1">&#39;max_force&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span>
+                                <span class="s1">&#39;start_move_pattern_size&#39;</span><span class="p">:</span> <span class="mi">240</span><span class="p">,</span>
+                                <span class="s1">&#39;max_move_pattern_size&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                                <span class="s1">&#39;vary_pattern_length&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                                <span class="s1">&#39;normalize_move_pattern&#39;</span><span class="p">:</span> <span class="kc">False</span>
+                                 <span class="p">},</span>
+                  <span class="s1">&#39;simulation&#39;</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s1">&#39;fps&#39;</span><span class="p">:</span> <span class="mi">240</span><span class="p">,</span>
+                                <span class="s1">&#39;colormap&#39;</span><span class="p">:</span> <span class="s1">&#39;viridis&#39;</span>
+                                <span class="p">},</span>
+                  <span class="s1">&#39;evolution&#39;</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s1">&#39;mutation_prob_ind&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+                                <span class="s1">&#39;mutation_prob_gene&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+                                <span class="s1">&#39;mutation_prob_feature&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+                                <span class="s1">&#39;alpha_limits&#39;</span><span class="p">:</span> <span class="mf">0.5</span>
+                               <span class="p">}</span>
+                  <span class="p">}</span>
+
+    <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;standard_volume&#39;</span><span class="p">]</span> <span class="o">=</span> \
+        <span class="p">(</span><span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;min_box_size&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;max_box_size&#39;</span><span class="p">])</span><span class="o">**</span><span class="mi">3</span>
+
+    <span class="k">return</span> <span class="n">evo_config</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">lifeproject</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

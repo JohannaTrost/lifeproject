@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>simulate_evolution module &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="src package" href="src.html" />
+    <link rel="prev" title="experiments package" href="experiments.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-simulate_evolution">
+<span id="simulate-evolution-module"></span><h1>simulate_evolution module<a class="headerlink" href="#module-simulate_evolution" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="simulate_evolution.main">
+<code class="sig-prename descclassname">simulate_evolution.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simulate_evolution.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simulate_evolution.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main function to run the program.</p>
+<p>The function can be run from the command line, via</p>
+<p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">simulate_evolution.py</span> <span class="pre">&lt;args&gt;</span></code></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There are two different modes: <cite>simulation</cite> and <cite>visualization</cite> mode.
+You can obtain an overview of all the command line arguments by typing:</p>
+<p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">simulate_evolution.py</span> <span class="pre">-h</span></code></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>usage: simulate_evolution.py <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-i INDIVIDUALS<span class="o">]</span> <span class="o">[</span>-g GENERATIONS<span class="o">]</span>
+                     <span class="o">[</span>-d DURATION<span class="o">]</span> <span class="o">[</span>-gc<span class="o">]</span> <span class="o">[</span>-e EVOLUTION_DIR<span class="o">]</span>
+                     <span class="o">[</span>-gen GENERATION<span class="o">]</span> <span class="o">[</span>-nt<span class="o">]</span> <span class="o">[</span>-s<span class="o">]</span> <span class="o">[</span>-o<span class="o">]</span> <span class="o">[</span>-c CORES<span class="o">]</span> <span class="o">[</span>-v<span class="o">]</span>
+                     <span class="o">[</span>-f<span class="o">]</span> <span class="o">[</span>-sd SLOW_DOWN_FACTOR<span class="o">]</span> <span class="o">[</span>-nb<span class="o">]</span> <span class="o">[</span>-ss<span class="o">]</span>
+
+optional arguments:
+  -h, --help            show this <span class="nb">help</span> message and <span class="nb">exit</span>
+  -i INDIVIDUALS, --individuals INDIVIDUALS
+                        number of individuals per generation - In <span class="k">case</span>
+                        visualization mode was chosen, a random <span class="nb">set</span> of i
+                        individuals will be chosen <span class="k">for</span> displaying <span class="o">(</span><span class="nv">default</span><span class="o">=</span><span class="m">10</span><span class="o">)</span>
+  -g GENERATIONS, --generations GENERATIONS
+                        number of generations to be evolved <span class="o">(</span><span class="nv">default</span><span class="o">=</span><span class="m">10</span><span class="o">)</span>
+  -d DURATION, --duration DURATION
+                        duration of each simulation in seconds - Final fitness
+                        is obtained after that <span class="nb">time</span> <span class="o">(</span><span class="nv">default</span><span class="o">=</span><span class="m">10</span><span class="o">)</span>
+  -gc, --get_config     only create default config file and <span class="nb">exit</span>
+  -e EVOLUTION_DIR, --evolution_dir EVOLUTION_DIR
+                        parent directory <span class="k">for</span> the evolution to be stored or
+                        loaded from <span class="o">(</span><span class="nv">default</span><span class="o">=</span>example<span class="o">)</span>
+  -gen GENERATION, --generation GENERATION
+                        generation on which to <span class="k">continue</span> evolution or
+                        generation to display <span class="k">if</span> visualization mode was chosen
+                        - Set -1 <span class="k">for</span> latest <span class="o">(</span><span class="nv">default</span><span class="o">=</span>-1<span class="o">)</span>
+  -nt, --no_tracking    disable tracker <span class="k">for</span> individuals
+  -s, --save_gene_pool  Save all gene pools per generation to new folder
+  -o, --overwrite       overwrite existing data
+  -c CORES, --cores CORES
+                        number of CPU cores <span class="k">for</span> simulating one generation -
+                        Set to -1 <span class="k">for</span> all cores <span class="o">(</span><span class="nv">default</span><span class="o">=</span>-1<span class="o">)</span>
+  -v, --visualize       visualize results - specify evolution directory with
+                        the <span class="nb">help</span> of -e
+  -f, --follow_target   whether to follow the target with the GUI camera
+  -sd SLOW_DOWN_FACTOR, --slow_down_factor SLOW_DOWN_FACTOR
+                        divide GUI update speed by this value
+  -nb, --not_only_best  <span class="k">do</span> not show result of best, but rather -i random
+                        individuals
+  -ss, --show_stats     whether to show statistics on the evolution - If set,
+                        statistics and not rendered individuals are shown
+</pre></div>
+</div>
+</div>
+<p><cite>Simulation</cite> mode refers to simulating an evolution without displaying actual individuals, whereas <cite>visualization</cite>
+mode renders a selected set of individuals in a GUI window for the user to inspect.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">lifeproject</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="experiments.html">experiments package</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">simulate_evolution module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="src.html">src package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">lifeproject</a><ul>
+      <li>Previous: <a href="experiments.html" title="previous chapter">experiments package</a></li>
+      <li>Next: <a href="src.html" title="next chapter">src package</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/simulate_evolution.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
