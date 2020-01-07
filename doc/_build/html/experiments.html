@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>experiments package &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="simulate_evolution module" href="simulate_evolution.html" />
+    <link rel="prev" title="lifeproject" href="modules.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="experiments-package">
+<h1>experiments package<a class="headerlink" href="#experiments-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-experiments.group_stats">
+<span id="experiments-group-stats-module"></span><h2>experiments.group_stats module<a class="headerlink" href="#module-experiments.group_stats" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="experiments.group_stats.main">
+<code class="sig-prename descclassname">experiments.group_stats.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/experiments/group_stats.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#experiments.group_stats.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main function to display and store group statistics.</p>
+<p>Group statistics were precomputed on an HPC. For each experiment in <cite>experiments</cite> 30 trials were computed using the
+respective <code class="docutils literal notranslate"><span class="pre">.json</span></code> configuration files. That is simulating 80 individuals per generation for 150 generations and
+a simulation duration per individual of 40s.</p>
+<p>This function transforms the results into plots, displays them and stores corresponding <code class="docutils literal notranslate"><span class="pre">.png</span></code> files in
+<cite>result_plots</cite>. Files are read using <a class="reference internal" href="#experiments.group_stats.read_group_stats" title="experiments.group_stats.read_group_stats"><code class="xref py py-func docutils literal notranslate"><span class="pre">experiments.group_stats.read_group_stats()</span></code></a>.</p>
+<p>To run this function use the command line and type:</p>
+<p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">experiments/group_stats.py</span></code></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="experiments.group_stats.read_group_stats">
+<code class="sig-prename descclassname">experiments.group_stats.</code><code class="sig-name descname">read_group_stats</code><span class="sig-paren">(</span><em class="sig-param">experiment_folder</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/experiments/group_stats.html#read_group_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#experiments.group_stats.read_group_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Collects data for precomputed experiments.</p>
+<p>This function looks through the experiment folder and assumes each sub-directory being a different experiment.
+Within each subdirectory, sub-subdirectories are assumed to represent trials. Within each trial folder the function
+looks for the respective stats.csv and loads it. The result will be in form of a nested dictionary, where the first
+level keys are the name of directory defined for each experiment and the second level for each trial. Hence it is
+advisable to name experiment directories comprehensively and trial directories as increasing integers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>experiment_folder</strong><span class="classifier">str</span></dt><dd><p>Path to directory where all experiments are stored.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>results</strong><span class="classifier">dict</span></dt><dd><p>Results of selected experiments. This is a nested dictionary, where the first level accepts keys according to
+the name of the experiment (i.e. name of directory where it was stored) and on the second level the trial, which
+again is the name of the directory.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-experiments">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-experiments" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">lifeproject</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">experiments package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulate_evolution.html">simulate_evolution module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="src.html">src package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">lifeproject</a><ul>
+      <li>Previous: <a href="modules.html" title="previous chapter">lifeproject</a></li>
+      <li>Next: <a href="simulate_evolution.html" title="next chapter">simulate_evolution module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/experiments.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

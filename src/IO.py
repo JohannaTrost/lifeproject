@@ -24,9 +24,8 @@ def convert_some_args(args):
     args : argparse.Namespace
         Parsed arguments with corrections applied.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
     """
-    # ensure arguments have certain formats and convert defaults into meaningful parameters
 
     # use all available CPU cores of -1
     if args.cores == -1:
@@ -116,12 +115,12 @@ def get_from_config(args, evo_config):
     args : argparse.Namespace
         Parsed arguments.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------
     gene_pool : list
-        List of genomes for all individuals.
+        List of genomes for all individuals. Created using :func:`src.new_gene_pool`.
     evo_config : dict
         Modified evolution configuration.
     stats : list
@@ -178,7 +177,7 @@ def new_gene_pool(gene_pool_file, evo_config):
     """Returns new gene pool.
 
     A new gene pool houses the genomes for all individuals. This can be obtained by reading an existing file from disk
-    or by newly initializing a genepool according to the evolution configuration.
+    or by newly initializing a ``gene_pool`` according to the evolution configuration.
 
     Parameters
     ----------
@@ -186,7 +185,7 @@ def new_gene_pool(gene_pool_file, evo_config):
         If None or str 'random' a new gene pools is created randomly. Otherwise gene_pool_file must be a path pointing
         to an existing gene pool file, which is loaded.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------
@@ -247,7 +246,7 @@ def save_gene_pool(gene_pool, filename='gen_0.pkl'):
     Parameters
     ----------
     gene_pool : list
-        List of genomes for all individuals.
+        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.
     filename : str
         Filename to save the data to.
     """
@@ -267,7 +266,7 @@ def load_gene_pool(filename='gen_0.pkl'):
     Returns
     -------
     gene_pool : list
-        List of genomes for all individuals.
+        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.
     """
 
     with open(filename, 'rb') as pkl_file:
@@ -341,8 +340,8 @@ def load_tracker(filename='tracker.pkl'):
 def find_latest_gen(save_folder_dir):
     """Finds the latest generation in a given evolution directory.
 
-    Within a precomputed evolution, generations are saved as gen_<generation number>.pkl files. This function looks
-    through the specified directory and finds the highest number attached to the file names starting with gen_.
+    Within a precomputed evolution, generations are saved as ``gen_<generation number>.pkl`` files. This function looks
+    through the specified directory and finds the highest number attached to the file names starting with `'gen_'`.
 
     Parameters
     ----------
@@ -354,6 +353,7 @@ def find_latest_gen(save_folder_dir):
     latest_gen : int
         Last generation found.
     """
+
     latest_gen = 0
     for file in os.listdir(save_folder_dir):
         if 'gen_' in file:
@@ -375,7 +375,7 @@ def read_evo_config(filename='evo_config.json'):
     Returns
     -------
     evo_config : dict
-        Evolution configuration.
+        Evolution configuration. See :func:`src.IO.make_default_evo_config`.
     """
 
     with open(filename) as json_file:
@@ -388,7 +388,7 @@ def write_evo_config(evo_config, filename='evo_config.json'):
     Parameters
     ----------
     evo_config : dict
-        Evolution configuration.
+        Evolution configuration. See :func:`src.IO.make_default_evo_config`.
     filename : str
         Filename to save the data to.
     """
@@ -405,7 +405,7 @@ def make_default_evo_config():
     Returns
     -------
     evo_config : dict
-        Default evolution configuration.
+        Default evolution configuration. See :func:`src.IO.make_default_evo_config`.
     """
 
     evo_config = {'individuals': {

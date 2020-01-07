@@ -34,11 +34,15 @@ def worker(args):
     Parameters
     ----------
     args : list | tuple
-        args[0] is the index of the worker
-        args[1] is the gene pool (part)
-        args[2] is the evolution configuration
-        args[3] is a boolean value indicating whether to track individual's paths
-        args[4] is the shared queue were data is appended (only for windows)
+        ``args[0]`` is the index of the worker
+
+        ``args[1]`` is the gene pool (part)
+
+        ``args[2]`` is the evolution configuration
+
+        ``args[3]`` is a boolean value indicating whether to track individual's paths
+
+        ``args[4]`` is the shared queue were data is appended (only for windows)
     """
     pop, sim_id, tracker = simulate_pop(args[1].tolist(), args[2], track_individuals=args[3], direct=True,
                                         sim_id=_make_sim_env('direct'))
@@ -52,7 +56,8 @@ def worker(args):
 def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores=1):
     """Performs direct simulation on multiple CPU cores.
 
-    Note that due to different system architectures this functions works differently on windows and unix-oid systems.
+    .. note:: Note that due to different system architectures this function works differently on windows and unix-oid
+              systems.
 
     To use multi core processing, we exploit the fact, that individuals can be simulated independently. Thus the gene
     pool is split into mostly evenly sized parts and for each part the simulation is run on a separate CPU core.
@@ -60,7 +65,7 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
     Parameters
     ----------
     gene_pool : list
-        List of genomes for all individuals.
+        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.
     evo_config : dict
         Configuration file for the current simulation.
     track_individuals : bool
@@ -137,14 +142,14 @@ def simulate_multi_core(gene_pool, evo_config, track_individuals=True, num_cores
 
 
 def simulate_pop(gene_pool, evo_config, args=None, direct=False, track_individuals=True, sim_id=None):
-    """Genomes for multiple individuals are converted into multi bodies and simulated using pybullet.
+    """Genomes for multiple individuals are converted into multi bodies and simulated using `pybullet`.
 
     Parameters
     ----------
     gene_pool : list
-        List of genomes for all individuals.
+        List of genomes for all individuals. Created using :func:`src.IO.new_gene_pool`.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
     args : argparse.Namespace
         Parsed arguments.
     direct : bool
@@ -255,7 +260,7 @@ def _get_start_height(genome):
     """Computes the z value in order to initially place the individual at the start of a simulation.
 
     This is necessary because individuals can vary in box sizes. To avoid glitching due to placement in the world plane
-    the start height must be appropriate. However it cannot be too heigh because the individual would loose time falling
+    the start height must be appropriate. However it cannot be too high because the individual would loose time falling
     down for the first steps of the simulation.
 
     The function searches for the largest z size of all boxes, adds a little extra and returns the value.
@@ -312,6 +317,11 @@ def _make_mb_dict():
 def _get_random_color(evo_config):
     """Returns a random color from a given colormap.
 
+    Parameters
+    ----------
+    evo_config : dict
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
+
     Returns
     -------
     color : list
@@ -330,7 +340,7 @@ def _genome2multi_body_data(sim_id, evo_config, genome=({}, {})):
     sim_id : int
         Index pointing to the physics server of the respective simulation.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
     genome : list | tuple
         Genome containing dictionaries for size, move pattern and evolution configuration. The first list entry are
         genes for box sizes.
@@ -441,7 +451,7 @@ def _genome2simulation(sim_id, evo_config, genome=({}, {})):
     sim_id : int
         Index pointing to the physics server of the respective simulation.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
     genome : list | tuple
         Genome containing dictionaries for size, move pattern and evolution configuration. The first list entry are
         genes for box sizes.

@@ -19,8 +19,9 @@ def crossing(pairs, gene_pool, evo_config):
     gene_pool : list
         List of genomes for all individuals.
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
     """
+
     mutation_prob_ind = evo_config['evolution']['mutation_prob_ind']
     mutation_prob_gene = evo_config['evolution']['mutation_prob_gene']
     mutation_prob_feature = evo_config['evolution']['mutation_prob_feature']
@@ -155,7 +156,7 @@ def selection(sorted_pop):
     num_survivors = int(0.5 * len(sorted_pop))
 
     # calcul of select and k and value of coeff
-    # from "Concepts fondamentaux des algorithmes évolutionnistes"
+    # from "Concepts fondamentaux des algorithmes evolutionnistes"
     # by Jean-Baptiste Mouret
     coeff = 1.1
     k = coeff ** (num_survivors + 1) - 1
@@ -182,7 +183,7 @@ def selection(sorted_pop):
 def _limit(mid, diff, evo_config):
     """Compute limits for random value selected based on the formula:
 
-    limits = mid ± diff ± a * diff, where
+    limits = mid +- diff +- a * diff, where
 
     Parameters
     ----------
@@ -192,6 +193,7 @@ def _limit(mid, diff, evo_config):
         Difference between the very same values.
     evo_config : dict
         Configuration file for the current simulation. The value 'a' is stored there.
+        See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------
@@ -246,7 +248,7 @@ def _make_random_gene_pool(evo_config):
     Parameters
     ----------
     evo_config : dict
-        Configuration file for the current simulation.
+        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.
 
     Returns
     -------

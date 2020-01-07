@@ -1,0 +1,367 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>src.evolution &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.evolution</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">src.individual</span> <span class="k">import</span> <span class="n">_make_random_genome</span><span class="p">,</span> <span class="n">get_dist</span><span class="p">,</span> <span class="n">_make_size_dict</span><span class="p">,</span> \
+    <span class="n">_interpolate_move_pattern</span><span class="p">,</span> <span class="n">_make_limb_dict</span><span class="p">,</span> <span class="n">_move_pattern_size</span><span class="p">,</span> <span class="n">_normalize_move_pattern</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">random</span>
+
+
+<div class="viewcode-block" id="crossing"><a class="viewcode-back" href="../../src.html#src.evolution.crossing">[docs]</a><span class="k">def</span> <span class="nf">crossing</span><span class="p">(</span><span class="n">pairs</span><span class="p">,</span> <span class="n">gene_pool</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Crossing of selected pairs in order to evolve a new generation.</span>
+
+<span class="sd">    Computes a new generation by crossing the genomes of both parents in each pair. Note that pairs stores indices</span>
+<span class="sd">    referring to entries in gene_pool. A new child is created by selecting values for each feature in each gene randomly</span>
+<span class="sd">    within a range determined by the parent&#39;s genomes. Afterwards mutation can happen given certain probabilities stored</span>
+<span class="sd">    in the evolution configuration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pairs : list</span>
+<span class="sd">        Pairs of survivor indices.</span>
+<span class="sd">    gene_pool : list</span>
+<span class="sd">        List of genomes for all individuals.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">mutation_prob_ind</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;evolution&#39;</span><span class="p">][</span><span class="s1">&#39;mutation_prob_ind&#39;</span><span class="p">]</span>
+    <span class="n">mutation_prob_gene</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;evolution&#39;</span><span class="p">][</span><span class="s1">&#39;mutation_prob_gene&#39;</span><span class="p">]</span>
+    <span class="n">mutation_prob_feature</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;evolution&#39;</span><span class="p">][</span><span class="s1">&#39;mutation_prob_feature&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;max_move_pattern_size&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">max_move_pattern</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;fps&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;duration&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">max_move_pattern</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;max_move_pattern_size&#39;</span><span class="p">]</span>
+
+    <span class="c1"># perform crossing of parents including mutation of a certain probability</span>
+    <span class="n">gene_pool_out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">size_keys</span> <span class="o">=</span> <span class="n">_make_size_dict</span><span class="p">(</span><span class="n">evo_config</span><span class="p">)</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+    <span class="n">move_keys</span> <span class="o">=</span> <span class="n">_make_limb_dict</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+    <span class="c1"># iterate over selected pairs</span>
+    <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+        <span class="n">child</span> <span class="o">=</span> <span class="p">[{},</span> <span class="p">{}]</span>
+
+        <span class="c1"># make dummy genome for mutation</span>
+        <span class="n">rand_child</span> <span class="o">=</span> <span class="n">_make_random_genome</span><span class="p">(</span><span class="n">evo_config</span><span class="p">)</span>
+
+        <span class="c1"># assign probability for this genome to mutate</span>
+        <span class="n">child_mut_prob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span>
+
+        <span class="c1"># iterate over chromosomes</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">chromosomes</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">[</span><span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">gene_pool</span><span class="p">[</span><span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]])):</span>
+
+            <span class="c1"># if dictionary iterate over genes</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+                    <span class="c1"># vary moving pattern length</span>
+                    <span class="k">if</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">move_keys</span><span class="p">:</span>
+
+                        <span class="c1"># mutation for move pattern size</span>
+                        <span class="k">if</span> <span class="n">child_mut_prob</span> <span class="o">&lt;</span> <span class="n">mutation_prob_ind</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">mutation_prob_gene</span> \
+                                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">mutation_prob_feature</span><span class="p">:</span>
+                            <span class="n">move_steps</span> <span class="o">=</span> <span class="n">_move_pattern_size</span><span class="p">(</span><span class="n">evo_config</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">o</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">gene</span><span class="p">]),</span> <span class="nb">len</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">gene</span><span class="p">])])</span>
+                            <span class="n">d</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">gene</span><span class="p">])</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">gene</span><span class="p">])</span>
+                            <span class="n">move_steps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">_randoms_between</span><span class="p">(</span><span class="n">_limit</span><span class="p">([</span><span class="n">o</span><span class="p">],</span> <span class="p">[</span><span class="n">d</span><span class="p">],</span> <span class="n">evo_config</span><span class="p">)))[</span><span class="mi">0</span><span class="p">])</span>
+
+                        <span class="n">chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_interpolate_move_pattern</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">gene</span><span class="p">],</span> <span class="n">move_steps</span><span class="p">,</span>
+                                                                         <span class="n">max_size</span><span class="o">=</span><span class="n">max_move_pattern</span><span class="p">)</span>
+                        <span class="n">chromosomes</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_interpolate_move_pattern</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">gene</span><span class="p">],</span> <span class="n">move_steps</span><span class="p">,</span>
+                                                                         <span class="n">max_size</span><span class="o">=</span><span class="n">max_move_pattern</span><span class="p">)</span>
+
+                        <span class="c1"># assure random child has same length</span>
+                        <span class="n">rand_child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_interpolate_move_pattern</span><span class="p">(</span><span class="n">rand_child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">],</span> <span class="n">move_steps</span><span class="p">,</span>
+                                                                          <span class="n">max_size</span><span class="o">=</span><span class="n">max_move_pattern</span><span class="p">)</span>
+
+                    <span class="c1"># assure symmetry if demanded</span>
+                    <span class="k">if</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;symmetric&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">size_keys</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="s1">&#39;left_hand&#39;</span> <span class="o">==</span> <span class="n">gene</span> <span class="ow">and</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                            <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="s1">&#39;right_hand&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="s1">&#39;left_hand&#39;</span><span class="p">]</span>
+                            <span class="k">continue</span>
+
+                        <span class="k">if</span> <span class="s1">&#39;right_hand&#39;</span> <span class="o">==</span> <span class="n">gene</span> <span class="ow">and</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                            <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="s1">&#39;left_hand&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="s1">&#39;right_hand&#39;</span><span class="p">]</span>
+                            <span class="k">continue</span>
+
+                        <span class="k">if</span> <span class="s1">&#39;left_foot&#39;</span> <span class="o">==</span> <span class="n">gene</span> <span class="ow">and</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                            <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="s1">&#39;right_foot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="s1">&#39;left_foot&#39;</span><span class="p">]</span>
+                            <span class="k">continue</span>
+
+                        <span class="k">if</span> <span class="s1">&#39;right_foot&#39;</span> <span class="o">==</span> <span class="n">gene</span> <span class="ow">and</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                            <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="s1">&#39;left_foot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="s1">&#39;right_foot&#39;</span><span class="p">]</span>
+                            <span class="k">continue</span>
+
+                    <span class="c1"># compute crossing function</span>
+                    <span class="n">o</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">gene</span><span class="p">],</span> <span class="n">chromosomes</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">gene</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">gene</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">gene</span><span class="p">])</span>
+                    <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_randoms_between</span><span class="p">(</span><span class="n">_limit</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">))</span>
+
+                    <span class="c1"># mutate if probability allows</span>
+                    <span class="k">if</span> <span class="n">child_mut_prob</span> <span class="o">&lt;</span> <span class="n">mutation_prob_ind</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">mutation_prob_gene</span><span class="p">:</span>
+                        <span class="n">mut_features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">]))</span> <span class="o">&lt;</span> <span class="n">mutation_prob_feature</span>
+                        <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">][</span><span class="n">mut_features</span><span class="p">]</span> <span class="o">=</span> <span class="n">rand_child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">][</span><span class="n">mut_features</span><span class="p">]</span>
+
+                    <span class="c1"># make sure move patterns are normalized to sum to 2 pi if desired</span>
+                    <span class="k">if</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;individuals&#39;</span><span class="p">][</span><span class="s1">&#39;normalize_move_pattern&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">move_keys</span><span class="p">:</span>
+                        <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_normalize_move_pattern</span><span class="p">(</span><span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">])</span>
+
+                    <span class="c1"># make sure to not have sizes greater than 0</span>
+                    <span class="k">if</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">size_keys</span><span class="p">:</span>
+                        <span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">][</span><span class="n">child</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">gene</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.01</span>
+
+        <span class="n">gene_pool_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gene_pool_out</span></div>
+
+
+<div class="viewcode-block" id="fitness"><a class="viewcode-back" href="../../src.html#src.evolution.fitness">[docs]</a><span class="k">def</span> <span class="nf">fitness</span><span class="p">(</span><span class="n">pop</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compute fitness for the entire population based on how far each individual moved.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pop : list</span>
+<span class="sd">        List of ind_ids for multiple individuals.</span>
+<span class="sd">    sim_id : int</span>
+<span class="sd">        Index pointing to the physics server of the respective simulation.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fitness_pop : list</span>
+<span class="sd">        Fitness for each individual in the population, that is the distance moved from [0, 0] since the start of the</span>
+<span class="sd">        simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># compute fitness as distance to origin</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">get_dist</span><span class="p">(</span><span class="n">ind</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">ind</span> <span class="ow">in</span> <span class="n">pop</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="selection"><a class="viewcode-back" href="../../src.html#src.evolution.selection">[docs]</a><span class="k">def</span> <span class="nf">selection</span><span class="p">(</span><span class="n">sorted_pop</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Select individuals based on performance (i.e. fitness).</span>
+
+<span class="sd">    By default as many individuals survive as half the size of the population. From those as many randomly assigned</span>
+<span class="sd">    pairs are selected as there were individuals in the original population.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sorted_pop : list</span>
+<span class="sd">        List of individuals of one population, sorted descending with respect to fitness.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pairs : list</span>
+<span class="sd">        Pairs of survivors. Note that len(pairs) == len(sorted_pop).</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># want to keep 50% of the pop</span>
+    <span class="n">num_survivors</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_pop</span><span class="p">))</span>
+
+    <span class="c1"># calcul of select and k and value of coeff</span>
+    <span class="c1"># from &quot;Concepts fondamentaux des algorithmes evolutionnistes&quot;</span>
+    <span class="c1"># by Jean-Baptiste Mouret</span>
+    <span class="n">coeff</span> <span class="o">=</span> <span class="mf">1.1</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">coeff</span> <span class="o">**</span> <span class="p">(</span><span class="n">num_survivors</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="n">survivor_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">num_survivors</span> <span class="o">-</span> <span class="p">(</span><span class="n">num_survivors</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span>
+        <span class="n">num_survivors</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+
+    <span class="k">while</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">survivor_ids</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">survivor_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">num_survivors</span> <span class="o">-</span> <span class="p">(</span><span class="n">num_survivors</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span>
+            <span class="n">num_survivors</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+
+    <span class="n">survivor_ids</span> <span class="o">*=</span> <span class="mi">2</span>  <span class="c1"># to ensure population length</span>
+
+    <span class="n">pairs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">this_survivor_id</span> <span class="ow">in</span> <span class="n">survivor_ids</span><span class="p">:</span>
+        <span class="c1"># pair each survivor with one randomly chosen survivor from the difference-set</span>
+        <span class="c1"># between the selected survivor and the others</span>
+        <span class="n">not_this_survivor_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">setdiff1d</span><span class="p">(</span><span class="n">survivor_ids</span><span class="p">,</span> <span class="n">this_survivor_id</span><span class="p">)</span>
+        <span class="n">not_this_survivor_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">not_this_survivor_ids</span><span class="p">))</span>
+        <span class="n">pairs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sorted_pop</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">this_survivor_id</span><span class="p">)],</span> <span class="n">sorted_pop</span><span class="p">[</span><span class="n">not_this_survivor_id</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">pairs</span></div>
+
+
+<span class="k">def</span> <span class="nf">_limit</span><span class="p">(</span><span class="n">mid</span><span class="p">,</span> <span class="n">diff</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compute limits for random value selected based on the formula:</span>
+
+<span class="sd">    limits = mid +- diff +- a * diff, where</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mid : float | np.array</span>
+<span class="sd">        Average between two values.</span>
+<span class="sd">    diff : float | np.array</span>
+<span class="sd">        Difference between the very same values.</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. The value &#39;a&#39; is stored there.</span>
+<span class="sd">        See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    limits : tuple</span>
+<span class="sd">        Limits for random value selection.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;evolution&#39;</span><span class="p">][</span><span class="s1">&#39;alpha_limits&#39;</span><span class="p">]</span>
+    <span class="n">limit_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mid</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">a</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>
+    <span class="n">limit_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mid</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">-</span> <span class="n">a</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>
+    <span class="c1"># determine upper and lower bound</span>
+    <span class="n">limits_sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">([</span><span class="n">limit_1</span><span class="p">,</span> <span class="n">limit_2</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">lower_bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">limits_sorted</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">upper_bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">limits_sorted</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">limits</span> <span class="o">=</span> <span class="p">(</span><span class="n">lower_bounds</span><span class="p">,</span> <span class="n">upper_bounds</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">limits</span>
+
+
+<span class="k">def</span> <span class="nf">_randoms_between</span><span class="p">(</span><span class="n">limits</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Selects random value within a given range.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    limits : list | tuple</span>
+<span class="sd">        Upper and lower limit.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    rand_in_limits : float</span>
+<span class="sd">        Random value selected from range between limits.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">lows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">limits</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">highs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">limits</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="c1"># abs difference to shift random distribution that is natively between 0 and 1</span>
+    <span class="c1"># you modify the range of values by multiplying and shift the lowest values by adding</span>
+    <span class="c1"># Example: if you want random values between 1 and 3 you say: rand * 2 + 1, etc</span>
+
+    <span class="c1"># array of random values between 0 and 1</span>
+    <span class="n">rand_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">highs</span><span class="p">))</span>  <span class="c1"># len(high) == len(low)</span>
+    <span class="n">differences</span> <span class="o">=</span> <span class="n">highs</span> <span class="o">-</span> <span class="n">lows</span>
+    <span class="c1"># random values between lower bound of limits and bound of limits + abs_difference</span>
+    <span class="n">rand_in_limits</span> <span class="o">=</span> <span class="p">(</span><span class="n">rand_values</span> <span class="o">*</span> <span class="n">differences</span><span class="p">)</span> <span class="o">+</span> <span class="n">lows</span>
+
+    <span class="k">return</span> <span class="n">rand_in_limits</span>
+
+
+<span class="k">def</span> <span class="nf">_make_random_gene_pool</span><span class="p">(</span><span class="n">evo_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create random gene pool for as many individuals as specified in the evolution configuration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    evo_config : dict</span>
+<span class="sd">        Configuration file for the current simulation. See :func:`src.IO.make_default_evo_config`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    gene_pool : list</span>
+<span class="sd">        List of genomes for all individuals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># create gene pool for specified number of individuals</span>
+    <span class="n">gene_pool</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">num_inds</span> <span class="o">=</span> <span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;individuals&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">ind</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_inds</span><span class="p">):</span>
+        <span class="n">gene_pool</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_make_random_genome</span><span class="p">(</span><span class="n">evo_config</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">gene_pool</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">lifeproject</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,322 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>simulate_evolution &#8212; LIFPROJET  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for simulate_evolution</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">src.simulation</span> <span class="k">import</span> <span class="n">simulate_multi_core</span>
+<span class="kn">import</span> <span class="nn">src.evolution</span> <span class="k">as</span> <span class="nn">evo</span>
+<span class="kn">import</span> <span class="nn">src.visualize</span> <span class="k">as</span> <span class="nn">vis</span>
+<span class="kn">import</span> <span class="nn">src.IO</span> <span class="k">as</span> <span class="nn">IO</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../simulate_evolution.html#simulate_evolution.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Main function to run the program.</span>
+
+<span class="sd">    The function can be run from the command line, via</span>
+
+<span class="sd">    ``python simulate_evolution.py &lt;args&gt;``</span>
+
+<span class="sd">    .. note:: There are two different modes: `simulation` and `visualization` mode.</span>
+<span class="sd">              You can obtain an overview of all the command line arguments by typing:</span>
+
+<span class="sd">              ``python simulate_evolution.py -h``</span>
+
+<span class="sd">              .. code-block:: bash</span>
+
+<span class="sd">                usage: simulate_evolution.py [-h] [-i INDIVIDUALS] [-g GENERATIONS]</span>
+<span class="sd">                                     [-d DURATION] [-gc] [-e EVOLUTION_DIR]</span>
+<span class="sd">                                     [-gen GENERATION] [-nt] [-s] [-o] [-c CORES] [-v]</span>
+<span class="sd">                                     [-f] [-sd SLOW_DOWN_FACTOR] [-nb] [-ss]</span>
+
+<span class="sd">                optional arguments:</span>
+<span class="sd">                  -h, --help            show this help message and exit</span>
+<span class="sd">                  -i INDIVIDUALS, --individuals INDIVIDUALS</span>
+<span class="sd">                                        number of individuals per generation - In case</span>
+<span class="sd">                                        visualization mode was chosen, a random set of i</span>
+<span class="sd">                                        individuals will be chosen for displaying (default=10)</span>
+<span class="sd">                  -g GENERATIONS, --generations GENERATIONS</span>
+<span class="sd">                                        number of generations to be evolved (default=10)</span>
+<span class="sd">                  -d DURATION, --duration DURATION</span>
+<span class="sd">                                        duration of each simulation in seconds - Final fitness</span>
+<span class="sd">                                        is obtained after that time (default=10)</span>
+<span class="sd">                  -gc, --get_config     only create default config file and exit</span>
+<span class="sd">                  -e EVOLUTION_DIR, --evolution_dir EVOLUTION_DIR</span>
+<span class="sd">                                        parent directory for the evolution to be stored or</span>
+<span class="sd">                                        loaded from (default=example)</span>
+<span class="sd">                  -gen GENERATION, --generation GENERATION</span>
+<span class="sd">                                        generation on which to continue evolution or</span>
+<span class="sd">                                        generation to display if visualization mode was chosen</span>
+<span class="sd">                                        - Set -1 for latest (default=-1)</span>
+<span class="sd">                  -nt, --no_tracking    disable tracker for individuals</span>
+<span class="sd">                  -s, --save_gene_pool  Save all gene pools per generation to new folder</span>
+<span class="sd">                  -o, --overwrite       overwrite existing data</span>
+<span class="sd">                  -c CORES, --cores CORES</span>
+<span class="sd">                                        number of CPU cores for simulating one generation -</span>
+<span class="sd">                                        Set to -1 for all cores (default=-1)</span>
+<span class="sd">                  -v, --visualize       visualize results - specify evolution directory with</span>
+<span class="sd">                                        the help of -e</span>
+<span class="sd">                  -f, --follow_target   whether to follow the target with the GUI camera</span>
+<span class="sd">                  -sd SLOW_DOWN_FACTOR, --slow_down_factor SLOW_DOWN_FACTOR</span>
+<span class="sd">                                        divide GUI update speed by this value</span>
+<span class="sd">                  -nb, --not_only_best  do not show result of best, but rather -i random</span>
+<span class="sd">                                        individuals</span>
+<span class="sd">                  -ss, --show_stats     whether to show statistics on the evolution - If set,</span>
+<span class="sd">                                        statistics and not rendered individuals are shown</span>
+
+<span class="sd">    `Simulation` mode refers to simulating an evolution without displaying actual individuals, whereas `visualization`</span>
+<span class="sd">    mode renders a selected set of individuals in a GUI window for the user to inspect.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># argument parser</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-i&#39;</span><span class="p">,</span> <span class="s1">&#39;--individuals&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;number of individuals per generation - In case visualization mode was chosen, a random &#39;</span>
+                             <span class="s1">&#39;set of i individuals will be chosen for displaying (default=10)&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-g&#39;</span><span class="p">,</span> <span class="s1">&#39;--generations&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;number of generations to be evolved (default=10)&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-d&#39;</span><span class="p">,</span> <span class="s1">&#39;--duration&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;duration of each simulation in seconds - Final fitness is obtained after that time &#39;</span>
+                             <span class="s1">&#39;(default=10)&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-gc&#39;</span><span class="p">,</span> <span class="s1">&#39;--get_config&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;only create default config file and exit&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-e&#39;</span><span class="p">,</span> <span class="s1">&#39;--evolution_dir&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;parent directory for the evolution to be stored or loaded from (default=example)&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-gen&#39;</span><span class="p">,</span> <span class="s1">&#39;--generation&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;generation on which to continue evolution or generation to display if visualization &#39;</span>
+                             <span class="s1">&#39;mode was chosen - Set -1 for latest (default=-1)&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-nt&#39;</span><span class="p">,</span> <span class="s1">&#39;--no_tracking&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;disable tracker for individuals&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-s&#39;</span><span class="p">,</span> <span class="s1">&#39;--save_gene_pool&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Save all gene pools per generation to new folder&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span> <span class="s1">&#39;--overwrite&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;overwrite existing data&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-c&#39;</span><span class="p">,</span> <span class="s1">&#39;--cores&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;number of CPU cores for simulating one generation - Set to -1 for all cores (default=-1)&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-v&#39;</span><span class="p">,</span> <span class="s1">&#39;--visualize&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;visualize results - specify evolution directory with the help of -e&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-f&#39;</span><span class="p">,</span> <span class="s1">&#39;--follow_target&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;whether to follow the target with the GUI camera&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-sd&#39;</span><span class="p">,</span> <span class="s1">&#39;--slow_down_factor&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;divide GUI update speed by this value&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-nb&#39;</span><span class="p">,</span> <span class="s1">&#39;--not_only_best&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;do not show result of best, but rather -i random individuals &#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-ss&#39;</span><span class="p">,</span> <span class="s1">&#39;--show_stats&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;whether to show statistics on the evolution - &#39;</span>
+                             <span class="s1">&#39;If set, statistics and not rendered individuals are shown&#39;</span><span class="p">)</span>
+
+    <span class="c1"># convert certain arguments</span>
+    <span class="n">args</span><span class="p">,</span> <span class="n">evo_config</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">convert_some_args</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">())</span>
+
+    <span class="c1"># initialize simulation</span>
+    <span class="n">gene_pool</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">stats</span><span class="p">,</span> <span class="n">fitness_over_gen</span><span class="p">,</span> <span class="n">tracker_over_gen</span><span class="p">,</span> <span class="n">parent_dir</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">get_from_config</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">)</span>
+
+    <span class="n">IO</span><span class="o">.</span><span class="n">write_evo_config</span><span class="p">(</span><span class="n">evo_config</span><span class="p">,</span> <span class="n">IO</span><span class="o">.</span><span class="n">return_parent_path</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;evo_config.json&#39;</span><span class="p">)</span>
+
+    <span class="c1"># only default config file created before exit</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">get_config</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">visualize</span><span class="p">:</span>
+
+        <span class="c1"># print summary</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Starting evolution...&#39;</span><span class="p">)</span>
+        <span class="n">parent_dir</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">return_parent_path</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Individuals: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;individuals&#39;</span><span class="p">]))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Generations: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;generations&#39;</span><span class="p">]))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Duration per simulation: </span><span class="si">{}</span><span class="s1">s&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;duration&#39;</span><span class="p">]))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;FPS: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">evo_config</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;fps&#39;</span><span class="p">]))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Number of cores utilized: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">cores</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;saving output to &#39;</span> <span class="o">+</span> <span class="n">parent_dir</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+        <span class="c1"># iterate over generations</span>
+        <span class="k">for</span> <span class="n">generation</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">generation</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">generations</span> <span class="o">+</span> <span class="n">args</span><span class="o">.</span><span class="n">generation</span><span class="p">):</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+            <span class="c1"># obtain fitness for each individual in current generation</span>
+            <span class="n">fitness</span><span class="p">,</span> <span class="n">tracker</span> <span class="o">=</span> <span class="n">simulate_multi_core</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">,</span>
+                                                   <span class="n">evo_config</span><span class="p">,</span>
+                                                   <span class="n">track_individuals</span><span class="o">=</span><span class="p">(</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_tracking</span><span class="p">),</span>
+                                                   <span class="n">num_cores</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">cores</span><span class="p">)</span>
+
+            <span class="c1"># sort fitness descending</span>
+            <span class="n">sorted_genome_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">fitness</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># from:to:instepsof</span>
+            <span class="c1"># select best performers and transform into parent pairs</span>
+            <span class="n">selected</span> <span class="o">=</span> <span class="n">evo</span><span class="o">.</span><span class="n">selection</span><span class="p">(</span><span class="n">sorted_genome_ids</span><span class="p">)</span>
+
+            <span class="c1"># collect data on population</span>
+            <span class="n">avg_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">fitness</span><span class="p">)</span>
+            <span class="n">best</span> <span class="o">=</span> <span class="n">sorted_genome_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">stats</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">generation</span><span class="p">,</span> <span class="n">avg_dist</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">fitness</span><span class="p">[</span><span class="n">best</span><span class="p">]])</span>
+            <span class="n">fitness_over_gen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fitness</span> <span class="o">+</span> <span class="p">[</span><span class="n">generation</span><span class="p">])</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_tracking</span><span class="p">:</span>
+                <span class="n">tracker_over_gen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tracker</span><span class="p">)</span>
+
+            <span class="c1"># if desired save state of current gene pool</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">save_gene_pool</span><span class="p">:</span>
+                <span class="n">IO</span><span class="o">.</span><span class="n">save_gene_pool</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;gen_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">generation</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.pkl&#39;</span><span class="p">)</span>
+
+                <span class="c1"># to make sure files are present even if the evolution was interrupted</span>
+                <span class="n">IO</span><span class="o">.</span><span class="n">save_stats</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;stats.csv&#39;</span><span class="p">)</span>
+                <span class="n">IO</span><span class="o">.</span><span class="n">save_stats</span><span class="p">(</span><span class="n">fitness_over_gen</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;fitness.csv&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_tracking</span><span class="p">:</span>
+                    <span class="n">IO</span><span class="o">.</span><span class="n">save_tracker</span><span class="p">(</span><span class="n">tracker_over_gen</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;tracker.pkl&#39;</span><span class="p">)</span>
+
+            <span class="c1"># create new gene pool by pairing selected parents</span>
+            <span class="n">gene_pool</span> <span class="o">=</span> <span class="n">evo</span><span class="o">.</span><span class="n">crossing</span><span class="p">(</span><span class="n">selected</span><span class="p">,</span> <span class="n">gene_pool</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">)</span>
+
+            <span class="c1"># print status</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;individuals </span><span class="si">{}</span><span class="s1"> | generation </span><span class="si">{}</span><span class="s1"> | avg distance </span><span class="si">{}</span><span class="s1"> | duration </span><span class="si">{}</span><span class="s1">s&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">),</span> <span class="n">generation</span><span class="p">,</span>
+                                                                                           <span class="n">avg_dist</span><span class="p">,</span>
+                                                                                           <span class="nb">round</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)))</span>
+
+        <span class="c1"># save statistics, fitness and position data and gene pool</span>
+        <span class="n">IO</span><span class="o">.</span><span class="n">save_stats</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;stats.csv&#39;</span><span class="p">)</span>
+        <span class="n">IO</span><span class="o">.</span><span class="n">save_stats</span><span class="p">(</span><span class="n">fitness_over_gen</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;fitness.csv&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_tracking</span><span class="p">:</span>
+            <span class="n">IO</span><span class="o">.</span><span class="n">save_tracker</span><span class="p">(</span><span class="n">tracker_over_gen</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;tracker.pkl&#39;</span><span class="p">)</span>
+        <span class="n">IO</span><span class="o">.</span><span class="n">save_gene_pool</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">parent_dir</span> <span class="o">+</span> <span class="s1">&#39;gen_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">generations</span> <span class="o">+</span> <span class="n">args</span><span class="o">.</span><span class="n">generation</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.pkl&#39;</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;done.&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">show_stats</span><span class="p">:</span>
+            <span class="c1"># show desired simulation</span>
+            <span class="n">pop</span><span class="p">,</span> <span class="n">sim_id</span><span class="p">,</span> <span class="n">tracker</span> <span class="o">=</span> <span class="n">vis</span><span class="o">.</span><span class="n">show_individual</span><span class="p">(</span><span class="n">gene_pool</span><span class="p">,</span> <span class="n">evo_config</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+            <span class="c1"># show tracked paths</span>
+            <span class="n">vis</span><span class="o">.</span><span class="n">show_path</span><span class="p">(</span><span class="n">tracker</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># show stats</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_tracking</span><span class="p">:</span>
+                <span class="c1"># show tracked paths</span>
+                <span class="n">tracked_paths</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">load_tracker</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">tracker</span><span class="p">)</span>
+                <span class="n">vis</span><span class="o">.</span><span class="n">show_path</span><span class="p">(</span><span class="n">tracked_paths</span><span class="p">[</span><span class="n">args</span><span class="o">.</span><span class="n">generation</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;paths of gen </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">generation</span><span class="p">))</span>
+
+                <span class="n">vis</span><span class="o">.</span><span class="n">show_multiple_gen_paths</span><span class="p">(</span><span class="n">tracked_paths</span><span class="p">)</span>
+
+            <span class="n">vis</span><span class="o">.</span><span class="n">show_stats</span><span class="p">(</span><span class="n">IO</span><span class="o">.</span><span class="n">load_stats</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">stats</span><span class="p">))</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">LIFPROJET</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">lifeproject</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Johanna Trost, Alexis Pollonni, Gwendal Fiquemo, Fares Halulouane.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
