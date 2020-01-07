@@ -1,9 +1,7 @@
 #!/bin/bash
 num_simulations=30
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-#d=$DIR/experiments/all_gene_pools_param_comparison/all_gene_pools_sym_extremelow
-for d in `ls -d $DIR/experiments/all_gene_pools_param_comparison/*`; do
-	#for s in 14;do
+for d in `ls -d $DIR/*`; do
 	for s in `seq 1 $num_simulations`; do
 		thisExperiment="$d/$s"
 		if [ ! -d "$thisExperiment" ];then
