@@ -16,7 +16,7 @@ pip install -r requirements.txt
 
 ## Documentation
 
-After cloning the repository to your local machine, you can open the documentation from here: doc/_build/html/index.html
+After cloning the repository to your local machine, you can open the documentation from here: `doc/_build/html/index.html`
 
 
 ## Usage
