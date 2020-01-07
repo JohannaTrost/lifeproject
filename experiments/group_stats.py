@@ -1,12 +1,12 @@
-from src.IO import read_evo_config, load_stats
 import numpy as np
 from scipy import stats
 import matplotlib.pylab as plt
-import os
+import os, sys
 sep = os.path.sep
+sys.path.append('..')
+from src.IO import read_evo_config, load_stats
 
-
-def read_group_stats(experiment_folder='experiments'):
+def read_group_stats(experiment_folder='.'):
     """Collects data for precomputed experiments.
 
     This function looks through the experiment folder and assumes each sub-directory being a different experiment.
@@ -58,8 +58,7 @@ labels = []
 for experiment in group_stats.keys():
 
     # obtain config for labelling
-    config = read_evo_config(
-        'experiments' + sep + experiment + sep + 'evo_config.json')
+    config = read_evo_config('.' + sep + experiment + sep + 'evo_config.json')
     results_exp_sel_gen = []
     results_over_gen = []
 
@@ -86,7 +85,7 @@ for y_limit in [(None, None), (0, 500)]:
     plt.ylim(y_limit)
     plt.gcf().subplots_adjust(bottom=0.175)
     plt.show()
-    plt.savefig('result_plots' + sep + 'group_stats' + sep + 'box_plot_gen_{}_both_sym_ylim_{}.png'.format(
+    plt.savefig('..' + sep + 'result_plots' + sep + 'group_stats' + sep + 'box_plot_gen_{}_both_sym_ylim_{}.png'.format(
         generations, int(plt.ylim()[1])))
 
 
@@ -124,5 +123,5 @@ for index in [(0, int(len(plot_data_over_gen) / 2), 'non_sym'),
     legend.set_title('mutation rate')
     plt.gcf().subplots_adjust(bottom=0.175)
     plt.show()
-    plt.savefig('result_plots' + sep + 'group_stats' + sep + 'line_plot_gen_{}_{}.png'.format(
+    plt.savefig('..' + sep + 'result_plots' + sep + 'group_stats' + sep + 'line_plot_gen_{}_{}.png'.format(
         generations, index[2]))
