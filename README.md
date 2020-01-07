@@ -4,6 +4,8 @@ Project on evolution based learning of movement.
 
 The base creature is a four-legged individual that has to learn to coordinate its limbs. Furthermore, the size of each limb can be modified throughout the evolution. Motion is realized by applying a motion pattern to each limb (a series of steps to take) of varying length. After each generation, sizes and motion patterns will be crossed, such that the individual learns to optimally use limbs given a certain size.
 
+![Image of moth](../master/result_plots/moth/evolution_moth_screenshots.png)
+
 ## Install 
 
 A minimum python version of 3.7 is required to run the program. Install all required python modules as follows:  
@@ -11,6 +13,10 @@ A minimum python version of 3.7 is required to run the program. Install all requ
 python -m pip install --upgrade pip
 pip install -r requirements.txt 
 ```
+
+## Documentation
+
+After cloning the repository to your local machine, you can open the documentation from here: doc/_build/html/index.html
 
 
 ## Usage
