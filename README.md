@@ -280,5 +280,3 @@ Mutation is realized as a random re-initialization of certain features of the ge
 
 * shows all plots that can be generated from experiments that have been executed on a cluster 
 
-
-<i> to be able to use each user function from these scripts please see the documentation within the scripts in the form of doc strings </i>
