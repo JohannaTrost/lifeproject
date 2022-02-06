@@ -1,4 +1,4 @@
-# LIFPROJET
+# Evolutionary algorithms
 
 Project on evolution based learning of movement.
 
